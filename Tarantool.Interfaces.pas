@@ -14,46 +14,46 @@ type
 
 type
   TTNTInsertValues = array of Variant;
-  IPackerMap = interface;
-  IPackerArray = interface;
+  ITNTPackerMap = interface;
+  ITNTPackerArray = interface;
   ITNTCommand = interface;
   ITNTResponce = interface;
   ITNTTuple = interface;
   ITNTUpdateDefinition = interface;
 
-  IPacker = interface
+  ITNTPacker = interface
     ['{1758BCE7-8E1F-4EDA-BB92-732C2A611ECA}']
     function GetAsBytes: TIdBytes;
     procedure SetAsBytes(const Value: TIdBytes);
 
-    function Header: IPackerMap;
-    function Body: IPackerMap;
+    function Header: ITNTPackerMap;
+    function Body: ITNTPackerMap;
     property AsBytes: TIdBytes read GetAsBytes write SetAsBytes;
   end;
 
-  IPackerMap = interface
+  ITNTPackerMap = interface
     ['{22B7EE05-4983-42E6-AF09-E1D0466B18C1}']
     function GetAsBytes: TBytes;
     procedure SetAsBytes(const Value: TBytes);
 
-    function Pack(const AKey: Integer; AValue: Integer): IPackerMap; overload;
-    function Pack(const AKey: String; AValue: Integer): IPackerMap; overload;
-    function Pack(const AKey: Integer; AValue: string): IPackerMap; overload;
-    function Pack(const AKey: String; AValue: string): IPackerMap; overload;
-    function Pack(const AKey: Integer; AValue: TBytes): IPackerMap; overload;
-    function Pack(const AKey: String; AValue: TBytes): IPackerMap; overload;
-    function PackMap(const AKey: Integer): IPackerMap; overload;
-    function PackMap(const AKey: String): IPackerMap; overload;
-    function PackArray(const AKey: string): IPackerArray; overload;
-    function PackArray(const AKey: integer): IPackerArray; overload;
+    function Pack(const AKey: Integer; AValue: Integer): ITNTPackerMap; overload;
+    function Pack(const AKey: String; AValue: Integer): ITNTPackerMap; overload;
+    function Pack(const AKey: Integer; AValue: string): ITNTPackerMap; overload;
+    function Pack(const AKey: String; AValue: string): ITNTPackerMap; overload;
+    function Pack(const AKey: Integer; AValue: TBytes): ITNTPackerMap; overload;
+    function Pack(const AKey: String; AValue: TBytes): ITNTPackerMap; overload;
+    function PackMap(const AKey: Integer): ITNTPackerMap; overload;
+    function PackMap(const AKey: String): ITNTPackerMap; overload;
+    function PackArray(const AKey: string): ITNTPackerArray; overload;
+    function PackArray(const AKey: integer): ITNTPackerArray; overload;
     function Count: Integer;
     function Name(const Index: Integer): String;
     function DataType(const Index: Integer): TMsgPackType;
 
-    function UnpackArray(const AKey: Integer): IPackerArray; overload;
-    function UnpackArray(const AKey: String): IPackerArray; overload;
-    function UnpackMap(const AKey: Integer): IPackerMap; overload;
-    function UnpackMap(const AKey: String): IPackerMap; overload;
+    function UnpackArray(const AKey: Integer): ITNTPackerArray; overload;
+    function UnpackArray(const AKey: String): ITNTPackerArray; overload;
+    function UnpackMap(const AKey: Integer): ITNTPackerMap; overload;
+    function UnpackMap(const AKey: String): ITNTPackerMap; overload;
     function UnpackInteger(const AKey: Integer): Integer; overload;
     function UnpackString(const AKey: Integer): String; overload;
     function UnpackInteger(const AKey: String): Integer; overload;
@@ -64,25 +64,25 @@ type
     property AsBytes: TBytes read GetAsBytes write SetAsBytes;
   end;
 
-  IPackerArray = interface
+  ITNTPackerArray = interface
     ['{2DF2CD7E-3129-4047-8AAD-73E61792F96D}']
     function GetAsBytes: TBytes;
     procedure SetAsBytes(const Value: TBytes);
 
-    function Pack(const AValue: Integer): IPackerArray; overload;
-    function Pack(const AValue: String): IPackerArray; overload;
-    function Pack(const AValue: TBytes): IPackerArray; overload;
-    function Pack(const AValue: Boolean): IPackerArray; overload;
-    function Pack(const AValue: Variant): IPackerArray; overload;
-    function PackArray: IPackerArray;
-    function PackMap: IPackerMap;
+    function Pack(const AValue: Integer): ITNTPackerArray; overload;
+    function Pack(const AValue: String): ITNTPackerArray; overload;
+    function Pack(const AValue: TBytes): ITNTPackerArray; overload;
+    function Pack(const AValue: Boolean): ITNTPackerArray; overload;
+    function Pack(const AValue: Variant): ITNTPackerArray; overload;
+    function PackArray: ITNTPackerArray;
+    function PackMap: ITNTPackerMap;
     function Count: Integer;
     function DataType(const Index: Integer): TMsgPackType;
     function UnpackInteger(const Index: Integer): Integer;
     function UnpackString(const Index: Integer): String;
     function UnpackBytes(const Index: Integer): TBytes;
-    function UnpackArray(const Index: Integer): IPackerArray;
-    function UnpackMap(const Index: Integer): IPackerMap;
+    function UnpackArray(const Index: Integer): ITNTPackerArray;
+    function UnpackMap(const Index: Integer): ITNTPackerMap;
     function UnpackBoolean(const Index: Integer): Boolean;
     function UnpackVariant(const Index: Integer): Variant;
     property AsBytes: TBytes read GetAsBytes write SetAsBytes;
@@ -126,7 +126,7 @@ type
     function GetCommand: Integer;
     procedure SetRequestId(const Value: Int64);
     function GetRequestId: Int64;
-    procedure PackToMessage(APacker: IPacker);
+    procedure PackToMessage(APacker: ITNTPacker);
     property Command: Integer read GetCommand;
     property RequestId: Int64 read GetRequestId write SetRequestId;
   end;
@@ -250,7 +250,7 @@ type
 
   ITNTUpdateDefinition = interface
     ['{04B99681-2CF9-43FC-A98B-0102A94C7688}']
-    procedure PackToMessage(APacker: IPackerArray);
+    procedure PackToMessage(APacker: ITNTPackerArray);
     function AddOperation(AFieldNo: Integer; AOperation: TTNTUpdateOperationCode; AValue: Variant): ITNTUpdateDefinition;
   end;
 
@@ -265,6 +265,28 @@ type
   ITNTDelete = interface(ITNTClientMessageKeys)
     ['{05B2D340-F142-49A4-88A5-511003092FCC}']
   end;
+
+  ITNTUpsert = interface(ITNTClientMessage)
+    function GetValues: Variant;
+    procedure SetValues(const Value: Variant);
+    function GetUpdateDef: ITNTUpdateDefinition;
+    procedure SetUpdateDef(const Value: ITNTUpdateDefinition);
+
+    property Values: Variant read GetValues write SetValues;
+    property UpdateDefinition: ITNTUpdateDefinition read GetUpdateDef write SetUpdateDef;
+  end;
+
+  ITNTCall = interface(ITNTCommand)
+  ['{CDB4123B-91AF-422F-ADB7-CEF51CE62C27}']
+    procedure SetArguments(const Value: Variant);
+    procedure SetFunctionName(const Value: String);
+    function GetArguments: Variant;
+    function GetFunctionName: String;
+
+    property FunctionName: String read GetFunctionName write SetFunctionName;
+    property Arguments: Variant read GetArguments write SetArguments;
+  end;
+
 
 implementation
 

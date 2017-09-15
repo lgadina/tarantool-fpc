@@ -25,8 +25,8 @@ type
     procedure SetSpaceId(const Value: Int64);
     function GetSpaceId: Int64;
   public
-    constructor Create(APacker: IPacker; AConnection: ITNTConnection); override;
-    constructor CreateFromTuple(AArr: IPackerArray; AConnection: ITNTConnection);
+    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection); override;
+    constructor CreateFromTuple(AArr: ITNTPackerArray; AConnection: ITNTConnection);
     property SpaceId: Int64 read GetSpaceId write SetSpaceId;
   end;
 
@@ -34,13 +34,13 @@ type
   private
     FIndex: TInterfaceList;
   public
-    constructor Create(APacker: IPacker; AConnection: ITNTConnection); override;
+    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection); override;
     destructor Destroy; override;
   end;
 
 { TTNTIndex }
 
-constructor TTNTIndex.Create(APacker: IPacker; AConnection: ITNTConnection);
+constructor TTNTIndex.Create(APacker: ITNTPacker; AConnection: ITNTConnection);
 begin
   inherited;
   With APacker.Body.UnpackArray(tnData).UnpackArray(0) do
@@ -52,7 +52,7 @@ begin
   end;
 end;
 
-constructor TTNTIndex.CreateFromTuple(AArr: IPackerArray;
+constructor TTNTIndex.CreateFromTuple(AArr: ITNTPackerArray;
   AConnection: ITNTConnection);
 begin
   inherited Create(nil, AConnection);
@@ -74,8 +74,8 @@ end;
 
 { TTNTIndexList }
 
-constructor TTNTIndexList.Create(APacker: IPacker; AConnection: ITNTConnection);
-var Arr: IPackerArray;
+constructor TTNTIndexList.Create(APacker: ITNTPacker; AConnection: ITNTConnection);
+var Arr: ITNTPackerArray;
     i: Integer;
 begin
  inherited;

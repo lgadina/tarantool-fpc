@@ -66,7 +66,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure PackToMessage(APacker: IPackerArray);
+    procedure PackToMessage(APacker: ITNTPackerArray);
     function AddOperation(AFieldNo: Integer; AOperation: TTNTUpdateOperationCode; AValue: Variant): ITNTUpdateDefinition;
   end;
 
@@ -77,7 +77,7 @@ type
     function GetUpdateDefinition: ITNTUpdateDefinition;
     procedure SetUpdateDefinition(const Value: ITNTUpdateDefinition);
   protected
-    procedure PackToMessage(APacker: IPacker); override;
+    procedure PackToMessage(APacker: ITNTPacker); override;
   public
     constructor Create(ACommand: Integer); override;
     property UpdateDefinition: ITNTUpdateDefinition read GetUpdateDefinition Write SetUpdateDefinition;
@@ -117,10 +117,10 @@ begin
   inherited;
 end;
 
-procedure TTNTUpdateDefintion.PackToMessage(APacker: IPackerArray);
+procedure TTNTUpdateDefintion.PackToMessage(APacker: ITNTPackerArray);
 var Obj: TTNTUpdateOperationClass;
     i: Integer;
-    L: IPackerArray;
+    L: ITNTPackerArray;
 begin
   for i := 0 to FOperList.Count - 1 do
    begin
@@ -147,7 +147,7 @@ begin
  Result := FUpdateDef;
 end;
 
-procedure TTNTCustomUpdateOperation.PackToMessage(APacker: IPacker);
+procedure TTNTCustomUpdateOperation.PackToMessage(APacker: ITNTPacker);
 var i: Integer;
 begin
   if FUpdateDef <> nil then

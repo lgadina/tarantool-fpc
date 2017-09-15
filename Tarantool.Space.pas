@@ -50,7 +50,7 @@ type
         property FieldType: TTNTFieldType read FFieldType;
       end;
   public
-    constructor Create(APacker: IPacker; AConnection: ITNTConnection); override;
+    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection); override;
     property SpaceId: Int64 read GetSpaceId write SetSpaceId;
     property OwnerId: Int64 read GetOwnerId write SetOwnerId;
     property Name: string read GetName write SetName;
@@ -78,9 +78,9 @@ begin
  Result := Connection.Call(AFunctionName, AArguments);
 end;
 
-constructor TTNTSpace.Create(APacker: IPacker; AConnection: ITNTConnection);
-var Maps: IPackerMap;
-    Flds: IPackerArray;
+constructor TTNTSpace.Create(APacker: ITNTPacker; AConnection: ITNTConnection);
+var Maps: ITNTPackerMap;
+    Flds: ITNTPackerArray;
     i: Integer;
     Select: ITNTSelect;
 begin

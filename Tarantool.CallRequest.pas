@@ -3,18 +3,6 @@ unit Tarantool.CallRequest;
 interface
 uses Tarantool.Interfaces;
 
-type
-  ITNTCall = interface(ITNTCommand)
-  ['{CDB4123B-91AF-422F-ADB7-CEF51CE62C27}']
-    procedure SetArguments(const Value: Variant);
-    procedure SetFunctionName(const Value: String);
-    function GetArguments: Variant;
-    function GetFunctionName: String;
-
-    property FunctionName: String read GetFunctionName write SetFunctionName;
-    property Arguments: Variant read GetArguments write SetArguments;
-  end;
-
 function NewCall(AFunctionName: String; AArguments: Variant): ITNTCall;
 
 implementation
@@ -35,7 +23,7 @@ type
     function GetArguments: Variant;
     function GetFunctionName: String;
   protected
-    procedure PackToMessage(APacker: IPacker); override;
+    procedure PackToMessage(APacker: ITNTPacker); override;
   public
     property FunctionName: String read GetFunctionName write SetFunctionName;
     property Arguments: Variant read GetArguments write SetArguments;
@@ -53,7 +41,7 @@ begin
  Result := FFunctionName;
 end;
 
-procedure TTNTCall.PackToMessage(APacker: IPacker);
+procedure TTNTCall.PackToMessage(APacker: ITNTPacker);
 var i: Integer;
 begin
   inherited;

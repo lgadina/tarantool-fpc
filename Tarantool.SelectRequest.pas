@@ -33,7 +33,7 @@ type
     function GetOffset: Int64;
     function GetSpaceId: Int64;
   protected
-    procedure PackToMessage(APacker: IPacker); override;
+    procedure PackToMessage(APacker: ITNTPacker); override;
   public
     constructor Create(ACommand: Integer); override;
     destructor Destroy; override;
@@ -92,10 +92,10 @@ begin
  Result := FSpaceId;
 end;
 
-procedure TTNTSelect.PackToMessage(APacker: IPacker);
+procedure TTNTSelect.PackToMessage(APacker: ITNTPacker);
 var s: Variant;
     i: Integer;
-    Arr: IPackerArray;
+    Arr: ITNTPackerArray;
 begin
   inherited;
   with APacker.Body do

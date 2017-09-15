@@ -32,7 +32,7 @@ type
     procedure SetScramble(const Value: TBytes);
     function GetScramble: TBytes;
   protected
-    procedure PackToMessage(APacker: IPacker); override;
+    procedure PackToMessage(APacker: ITNTPacker); override;
   public
     property Username: string read GetUsername write SetUsername;
     property Scramble: TBytes read GetScramble write SetScramble;
@@ -52,7 +52,7 @@ begin
  Result := FUsername;
 end;
 
-procedure TTNTAuthenticationRequest.PackToMessage(APacker: IPacker);
+procedure TTNTAuthenticationRequest.PackToMessage(APacker: ITNTPacker);
 begin
   inherited;
   APacker.Body.Pack(tnUsername, FUsername);

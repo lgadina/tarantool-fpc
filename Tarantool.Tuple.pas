@@ -19,7 +19,7 @@ type
     function GetRow(Index: Integer): Variant;
     function GetItemCount(ARowIndex: Integer): Integer;
   public
-    constructor Create(APacker: IPacker; AConnection: ITNTConnection); override;
+    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection); override;
     property Values: Variant read GetValues;
     property RowCount: Integer read GetRowCount;
     property Row[Index: Integer]: Variant read GetRow;
@@ -28,8 +28,8 @@ type
 
 { TTNTTuple }
 
-constructor TTNTTuple.Create(APacker: IPacker; AConnection: ITNTConnection);
-var Arr: IPackerArray;
+constructor TTNTTuple.Create(APacker: ITNTPacker; AConnection: ITNTConnection);
+var Arr: ITNTPackerArray;
 begin
   inherited;
   Arr := APacker.Body.UnpackArray(tnData);

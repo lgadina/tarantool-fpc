@@ -13,8 +13,8 @@ type
     procedure SetRequestId(const Value: Int64);
     function GetRequestId: Int64;
   protected
-    procedure MakeHeader(APacker: IPacker);
-    procedure PackToMessage(APacker: IPacker); virtual;
+    procedure MakeHeader(APacker: ITNTPacker);
+    procedure PackToMessage(APacker: ITNTPacker); virtual;
   public
     constructor Create(ACommand: Integer); virtual;
     property Command: Integer read GetCommand;
@@ -27,7 +27,7 @@ type
   protected
     function GetSpaceId: Int64;
     procedure SetSpaceId(const Value: Int64);
-    procedure PackToMessage(APacker: IPacker);override;
+    procedure PackToMessage(APacker: ITNTPacker);override;
   public
     property SpaceId: Int64 read GetSpaceId write SetSpaceId;
   end;
@@ -38,7 +38,7 @@ type
   protected
     function GetIndexId: Int64;
     procedure SetIndexId(const Value: Int64);
-    procedure PackToMessage(APacker: IPacker); override;
+    procedure PackToMessage(APacker: ITNTPacker); override;
   public
     property IndexId: Int64 read GetIndexId write SetIndexId;
   end;
@@ -47,7 +47,7 @@ type
   private
     FKeys: Variant;
   protected
-    procedure PackToMessage(APacker: IPacker); override;
+    procedure PackToMessage(APacker: ITNTPacker); override;
     function GetKeys: Variant;
     procedure SetKeys(const Value: Variant);
   public
@@ -77,13 +77,13 @@ begin
  Result := FRequestId;
 end;
 
-procedure TTNTClientMessageBase.MakeHeader(APacker: IPacker);
+procedure TTNTClientMessageBase.MakeHeader(APacker: ITNTPacker);
 begin
  APacker.Header.Pack(tnCode, FCommand);
  APacker.Header.Pack(tnSync, FRequestId);
 end;
 
-procedure TTNTClientMessageBase.PackToMessage(APacker: IPacker);
+procedure TTNTClientMessageBase.PackToMessage(APacker: ITNTPacker);
 begin
  MakeHeader(APacker);
 end;
@@ -100,7 +100,7 @@ begin
  Result := FSpaceId;
 end;
 
-procedure TTNTClientMessage.PackToMessage(APacker: IPacker);
+procedure TTNTClientMessage.PackToMessage(APacker: ITNTPacker);
 begin
  inherited;
  APacker.Body.Pack(tnSpaceId, FSpaceId);
@@ -118,7 +118,7 @@ begin
  Result := FIndexId;
 end;
 
-procedure TTNTClientMessageIndex.PackToMessage(APacker: IPacker);
+procedure TTNTClientMessageIndex.PackToMessage(APacker: ITNTPacker);
 begin
   inherited;
   APacker.Body.Pack(tnIndexId, FIndexId);
@@ -136,7 +136,7 @@ begin
  Result := FKeys;
 end;
 
-procedure TTNTClientMessageKeys.PackToMessage(APacker: IPacker);
+procedure TTNTClientMessageKeys.PackToMessage(APacker: ITNTPacker);
 var i: Integer;
 begin
   inherited;

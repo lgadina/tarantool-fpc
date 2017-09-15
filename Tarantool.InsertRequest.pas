@@ -25,7 +25,7 @@ type
     function GetValues: Variant;
     procedure SetValues(const Value: Variant);
   protected
-    procedure PackToMessage(APacker: IPacker); override;
+    procedure PackToMessage(APacker: ITNTPacker); override;
   public
     constructor Create(ACommand: Integer); override;
     destructor Destroy; override;
@@ -59,7 +59,7 @@ begin
  Result := FValues;
 end;
 
-procedure TTNTInsert.PackToMessage(APacker: IPacker);
+procedure TTNTInsert.PackToMessage(APacker: ITNTPacker);
 var v: Variant;
     i: Integer;
 begin

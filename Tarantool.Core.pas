@@ -242,7 +242,7 @@ var Auth: string;
     InBuf: TIdBytes;
     BufLen: Integer;
     AuthRequest: ITNTAuthenticationRequest;
-    Packer: IPacker;
+    Packer: ITNTPacker;
 begin
   if not FIsReady then
   begin
@@ -293,7 +293,7 @@ end;
 function TTNTConnection.ReadFromTarantool(AResponceGuid: TGUID): ITNTResponce;
 var InBuf: TIdBytes;
     BufLen: Integer;
-    Packer: IPacker;
+    Packer: ITNTPacker;
     FClass: TTNTResponseClass;
 begin
    Result := nil;
@@ -363,7 +363,7 @@ end;
 
 procedure TTNTConnection.WriteToTarantool(ACommand: ITNTCommand);
 var
-  Packer: IPacker;
+  Packer: ITNTPacker;
 begin
   Packer := TTNTPacker.Create;
   ACommand.RequestId := FRequestId;
@@ -376,7 +376,7 @@ function TTNTConnection.GetTarantoolPacketLength(ABuf: TBytes): Integer;
 begin
  Result := -1;
   if (Length(ABuf) >= 5) and (ABuf[0] = $ce) then
-    with TSimpleMsgPack.Create do
+    with TTNTMsgPack.Create do
     begin
       try
          DecodeFromBytes(ABuf);

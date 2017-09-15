@@ -3,17 +3,6 @@ unit Tarantool.UpsertRequest;
 interface
 uses Tarantool.Interfaces;
 
-type
-  ITNTUpsert = interface(ITNTClientMessage)
-    function GetValues: Variant;
-    procedure SetValues(const Value: Variant);
-    function GetUpdateDef: ITNTUpdateDefinition;
-    procedure SetUpdateDef(const Value: ITNTUpdateDefinition);
-
-    property Values: Variant read GetValues write SetValues;
-    property UpdateDefinition: ITNTUpdateDefinition read GetUpdateDef write SetUpdateDef;
-  end;
-
 
 function NewUpsert(ASpaceId: Integer; AValues: Variant; AUpdateDefinition: ITNTUpdateDefinition): ITNTUpsert;
 
@@ -40,7 +29,7 @@ type
     function GetTuple: TBytes;
     procedure SetTuple(const Value: TBytes);
   protected
-    procedure PackToMessage(APacker: IPacker); override;
+    procedure PackToMessage(APacker: ITNTPacker); override;
   public
 
     property Values: Variant read GetValues write SetValues;
@@ -65,7 +54,7 @@ begin
  Result := FValues;
 end;
 
-procedure TTNTUpsert.PackToMessage(APacker: IPacker);
+procedure TTNTUpsert.PackToMessage(APacker: ITNTPacker);
 var i: Integer;
 begin
  if FUpdateDef <> nil then

@@ -82,10 +82,10 @@ type
     /// initialize the low-level memory structure
     // - you should call Clear before calling overloaded Init several times
     procedure Init; overload;
-    procedure InitFrom(const AMsgPack: TSimpleMsgPack); overload;
-    procedure InitFrom(const APacker: IPackerArray); overload;
-    function ToMsgPack: TSimpleMsgPack;
-    procedure PackToMessage(const APacker: IPackerArray);
+    procedure InitFrom(const AMsgPack: TTNTMsgPack); overload;
+    procedure InitFrom(const APacker: ITNTPackerArray); overload;
+    function ToMsgPack: TTNTMsgPack;
+    procedure PackToMessage(const APacker: ITNTPackerArray);
     /// initialize the low-level memory structure with a given array of variant
     // - you should call Clear before calling overloaded Init several times
     procedure InitFrom(const aValues: TTNTVariantDynArray); overload;
@@ -176,7 +176,7 @@ var
   TNTVariantType: TInvokeableVariantType;
 
 function TNTVariant: Variant; overload;
-function TNTVariant(const MsgPack: TSimpleMsgPack): Variant; overload;
+function TNTVariant(const MsgPack: TTNTMsgPack): Variant; overload;
 function TNTVariant(const AObject: TObject): Variant; overload;
 function TNTVariantData(const TNTVariant: Variant): PTNTVariantData;
 function TNTObject(const TNTVariant: Variant; AClass: TClass): TObject;
@@ -214,9 +214,9 @@ begin
 end;
 
 
- function ParseArray(AMsgPack: TSimpleMsgPack): TTNTVariantData; forward;
+ function ParseArray(AMsgPack: TTNTMsgPack): TTNTVariantData; forward;
 
- function ParseMap(AMsgPack: TSimpleMsgPack): TTNTVariantData;
+ function ParseMap(AMsgPack: TTNTMsgPack): TTNTVariantData;
  var i: Integer;
      val: variant;
      key: string;
@@ -236,7 +236,7 @@ end;
     Result.VKind := tvkObject;
  end;
 
- function ParseArray(AMsgPack: TSimpleMsgPack): TTNTVariantData;
+ function ParseArray(AMsgPack: TTNTMsgPack): TTNTVariantData;
  var i: Integer;
      val: Variant;
  begin
@@ -255,7 +255,7 @@ end;
  end;
 
 
-procedure TTNTVariantData.InitFrom(const AMsgPack: TSimpleMsgPack);
+procedure TTNTVariantData.InitFrom(const AMsgPack: TTNTMsgPack);
 
 var V: Variant;
 
@@ -286,9 +286,9 @@ begin
 end;
 
 
-function ParseIMap(APackerMap: IPackerMap): TTNTVariantData; forward;
+function ParseIMap(APackerMap: ITNTPackerMap): TTNTVariantData; forward;
 
-function ParseIArray(APackerArray: IPackerArray): TTNTVariantData;
+function ParseIArray(APackerArray: ITNTPackerArray): TTNTVariantData;
 var i: Integer;
     val: Variant;
 begin
@@ -306,7 +306,7 @@ begin
 end;
 
 
-function ParseIMap(APackerMap: IPackerMap): TTNTVariantData;
+function ParseIMap(APackerMap: ITNTPackerMap): TTNTVariantData;
 var i: Integer;
     val: Variant;
 begin
@@ -323,7 +323,7 @@ begin
     end;
 end;
 
-procedure TTNTVariantData.InitFrom(const APacker: IPackerArray);
+procedure TTNTVariantData.InitFrom(const APacker: ITNTPackerArray);
 var i: Integer;
 begin
  Init;
@@ -466,7 +466,7 @@ begin
   result := -1;
 end;
 
-procedure TTNTVariantData.PackToMessage(const APacker: IPackerArray);
+procedure TTNTVariantData.PackToMessage(const APacker: ITNTPackerArray);
 begin
  APacker.AsBytes := ToMsgPack.EncodeToBytes;
 end;
@@ -530,14 +530,14 @@ end;
 
 
 
-function TTNTVariantData.ToMsgPack: TSimpleMsgPack;
+function TTNTVariantData.ToMsgPack: TTNTMsgPack;
 var i: Integer;
     vt: Word;
 begin
  Result := nil;
  if VKind = tvkObject then
  begin
-  Result := TSimpleMsgPack.Create(mptMap);
+  Result := TTNTMsgPack.Create(mptMap);
   for I := 0 to VCount - 1 do
     begin
       vt := VarType(Values[I]);
@@ -551,7 +551,7 @@ begin
  else
  if VKind = tvkArray then
  begin
-  Result := TSimpleMsgPack.Create(mptArray);
+  Result := TTNTMsgPack.Create(mptArray);
   for I := 0 to VCount - 1 do
     begin
       vt := VarType(Values[I]);
@@ -562,7 +562,7 @@ begin
         Result.AddArrayChild.AsVariant := Values[i];
     end;
  end else
-  Result := TSimpleMsgPack.Create(mptArray);
+  Result := TTNTMsgPack.Create(mptArray);
 end;
 
 type
@@ -631,8 +631,10 @@ begin
  if AData <> nil then
  begin
   LDyn := Pointer(AData^);
+
   Len := TTNTVariantData(AValue).Count;
   DynArraySetLength(LDyn, ArrayInfo, 1, @Len);
+  Result := LDyn;
   CurElement := 0;
   if Len > 0 then
    ReadRow(ElemInfo, CurElement, Len, AData, AValue);
@@ -803,7 +805,7 @@ begin
 end;
 
 
-function TNTVariant(const MsgPack: TSimpleMsgPack): Variant; overload;
+function TNTVariant(const MsgPack: TTNTMsgPack): Variant; overload;
 begin
   TTNTVariantData(Result).InitFrom(MsgPack);
 end;
@@ -835,12 +837,13 @@ begin
       result := @TNTVariantDataFake;
 end;
 
-function WriteRectDynArrayElem(Info: PTypeInfo; Size, Dim: Integer; P: Pointer): Variant;
+procedure WriteRectDynArrayElem(Info: PTypeInfo; Size, Dim: Integer; P: Pointer; Arr: PTNTVariantData);
 var i: Integer;
     ElemSize: Integer;
     TypeData: PTypeData;
+    L: Variant;
+    V: PTNTVariantData;
 begin
-  TTNTVariantData(Result).Init;
   TypeData := GetTypeData(Info);
   if Dim > 1 then
    begin
@@ -848,7 +851,10 @@ begin
      for i := 0 to Size - 1 do
        begin
          ElemSize := GetDynArrayLength(Pointer(P^));
-         TTNTVariantData(Result).AddNameValue(I.ToString, WriteRectDynArrayElem(Info, ElemSize, Dim, Pointer(P^)));
+         TTNTVariantData(L).Init;
+         V := TNTVariantDataSafe(L);
+         WriteRectDynArrayElem(Info, ElemSize, Dim, Pointer(P^), V);
+         Arr^.AddNameValue(I.ToString, L);
          P := Pointer(NativeUInt(P) + sizeof(Pointer));
        end;
    end else
@@ -857,7 +863,7 @@ begin
        begin
          if Info.Kind = tkClass then
          begin
-           TTNTVariantData(Result).AddValue(TNTVariant(TObject(P^)));
+           Arr^.AddValue(TNTVariant(TObject(P^)));
            //AddArrayChild.OO[I] := ObjectToMsgPack(TObject(P^));
            P := Pointer( NativeUInt(P) + SizeOf(Pointer));
            Continue
@@ -865,21 +871,21 @@ begin
          else
          case info^.Kind of
           tkInteger: case TypeData.OrdType of
-                      otSByte, otUByte: TTNTVariantData(Result).AddValue(Byte(P^));
-                      otSWord, otUWord: TTNTVariantData(Result).AddValue(SmallInt(P^));
-                      otSLong, otULong: TTNTVariantData(Result).AddValue(Integer(P^));
+                      otSByte, otUByte: Arr^.AddValue(Byte(P^));
+                      otSWord, otUWord: Arr^.AddValue(SmallInt(P^));
+                      otSLong, otULong: Arr^.AddValue(Integer(P^));
                      end;
           tkFloat:   case TypeData.FloatType of
-                      ftSingle: TTNTVariantData(Result).AddValue(Single(P^));
-                      ftDouble: TTNTVariantData(Result).AddValue(Double(P^));
+                      ftSingle: Arr^.AddValue(Single(P^));
+                      ftDouble: Arr^.AddValue(Double(P^));
                      end;
-          tkInt64: TTNTVariantData(Result).AddValue(Int64(P^));
-          tkChar: TTNTVariantData(Result).AddValue(Char(P^));
-          tkWChar: TTNTVariantData(Result).AddValue(WideChar(P^));
-          tkWString: TTNTVariantData(Result).AddValue(PWideString(P)^);
-          tkString: TTNTVariantData(Result).AddValue(PShortString(P)^);
-          tkLString: TTNTVariantData(Result).AddValue(PAnsiString(P)^);
-          tkUString: TTNTVariantData(Result).AddValue(PUnicodeString(P)^);
+          tkInt64: Arr^.AddValue(Int64(P^));
+          tkChar: Arr^.AddValue(Char(P^));
+          tkWChar: Arr^.AddValue(WideChar(P^));
+          tkWString: Arr^.AddValue(PWideString(P)^);
+          tkString: Arr^.AddValue(PShortString(P)^);
+          tkLString: Arr^.AddValue(PAnsiString(P)^);
+          tkUString: Arr^.AddValue(PUnicodeString(P)^);
          end;
 
          P := Pointer( NativeUInt(P) + TypeData.elSize);
@@ -888,6 +894,58 @@ begin
 
 end;
 
+
+procedure WriteNonRectDynArray(Info: PTypeInfo; P: Pointer; Dim: Integer; Arr: PTNTVariantData); forward;
+
+procedure WriteNonRectDynArrayElem(Info: PTypeInfo; P: Pointer; Dim: Integer; Arr: PTNTVariantData);
+begin
+ if (Dim > 0)  or (Info.Kind = tkDynArray) then
+   WriteNonRectDynArray(Info, P, Dim, Arr)
+ else
+   WriteRectDynArrayElem(Info, 1, 1, P, Arr);
+
+end;
+
+
+procedure WriteNonRectDynArray(Info: PTypeInfo; P: Pointer; Dim: Integer; Arr: PTNTVariantData);
+var ElemInfo: PTypeInfo;
+    Len: Integer;
+    i: Integer;
+    PData: Pointer;
+    L: Variant;
+    V: PTNTVariantData;
+begin
+  ElemInfo := GetDynArrayNextInfo(Info);
+  //if ArrayIsNull(P) then
+  //   CreateEmptyArray
+  Len := GetDynArrayLength(P);
+
+  for i := 0 to Len - 1 do
+  begin
+    if ElemInfo.Kind = tkDynArray then
+    begin
+      PData := Pointer(P^);
+      TTNTVariantData(L).Init;
+      V := TNTVariantDataSafe(L, tvkUndefined);
+      WriteNonRectDynArrayElem(ElemInfo, PData, Dim - 1, V);
+      Arr^.AddValue(L);
+    end
+     else
+    begin
+      PData := P;
+      WriteNonRectDynArrayElem(ElemInfo, PData, Dim - 1, Arr);
+    end;
+
+
+    if ElemInfo.Kind = tkClass then
+      P := Pointer(NativeUInt(P) + SizeOf(Pointer))
+    else
+      P := Pointer(NativeUInt(P) +  GetTypeData(ElemInfo).elSize);
+  end;
+
+end;
+
+
 function DynArrayToTNTVariant(Info: PTypeInfo; P: Pointer): Variant;
 var
   ElemInfo: PTypeInfo;
@@ -895,19 +953,19 @@ var
   UseNonRect: Boolean;
   DimArr: TNativeIntDynArray;
 begin
-  Result := Unassigned;
+  TTNTVariantData(Result).Init;
   GetDynArrayElementTypeInfo(Info, ElemInfo, Dims);
   UseNonRect := Assigned(P) and ((IsArrayRect(P, Dims)=False) or (Dims > 1));
   if UseNonRect then
    begin
-
+     WriteNonRectDynArray(Info, P, Dims, TNTVariantDataSafe(Result));
    end
   else
    begin
      SetLength(DimArr, Dims);
      if Assigned(P) then
       GetDims(P, DimArr, Dims);
-     Result := WriteRectDynArrayElem(ElemInfo, GetDynArrayLength(P), Dims, P);
+     WriteRectDynArrayElem(ElemInfo, GetDynArrayLength(P), Dims, P, TNTVariantDataSafe(Result));
    end;
 end;
 

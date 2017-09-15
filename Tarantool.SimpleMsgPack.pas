@@ -135,9 +135,9 @@ type
 
   { TSimpleMsgPack }
 
-  TSimpleMsgPack = class(TObject)
+  TTNTMsgPack = class(TObject)
   private
-    FParent:TSimpleMsgPack;
+    FParent:TTNTMsgPack;
     //FLowerName:String;
     //FName:String;
     FValue:TBytes;
@@ -145,14 +145,14 @@ type
     FDataType:TMsgPackType;
     FKeyType: TMsgPackType;
   {$IFDEF UNICODE}
-    FChildren: TObjectList<TSimpleMsgPack>;
+    FChildren: TObjectList<TTNTMsgPack>;
   {$ELSE}
     FChildren: TObjectList;
   {$ENDIF}
 
-    procedure InnerAddToChildren(pvDataType: TMsgPackType; obj: TSimpleMsgPack);
-    function InnerAdd(pvDataType: TMsgPackType): TSimpleMsgPack; overload;
-    function InnerAdd():TSimpleMsgPack; overload;
+    procedure InnerAddToChildren(pvDataType: TMsgPackType; obj: TTNTMsgPack);
+    function InnerAdd(pvDataType: TMsgPackType): TTNTMsgPack; overload;
+    function InnerAdd():TTNTMsgPack; overload;
     function GetCount: Integer;
     procedure InnerEncodeToStream(pvStream:TStream);
     procedure InnerParseFromStream(pvStream: TStream);
@@ -188,7 +188,7 @@ type
     
     procedure checkObjectDataType(ANewType: TMsgPackType);
 
-    function findObj(pvName:string): TSimpleMsgPack;
+    function findObj(pvName:string): TTNTMsgPack;
     function indexOf(pvName:string): Integer;
     function indexOfCaseSensitive(pvName:string): Integer;
     function indexOfIgnoreSensitive(pvLowerCaseName: string): Integer;
@@ -203,17 +203,17 @@ type
     function GetKeyAsSingle: Single;
     function GetKeyAsString: String;
     function GetName: String;
-    function GetOO(pvPath: Integer): TSimpleMsgPack;
+    function GetOO(pvPath: Integer): TTNTMsgPack;
     function GetSS(pvPath: Integer): string;
 
 
     /// <summary>
     ///   find object index by a path 
     /// </summary>
-    function InnerFindPathObject(pvPath: string; var vParent: TSimpleMsgPack; var
-        vIndex: Integer): TSimpleMsgPack;
+    function InnerFindPathObject(pvPath: string; var vParent: TTNTMsgPack; var
+        vIndex: Integer): TTNTMsgPack;
 
-    function GetO(pvPath: String): TSimpleMsgPack;
+    function GetO(pvPath: String): TTNTMsgPack;
     procedure SetII(pvPath: Integer; AValue: Int64);
     procedure SetKeyAsBoolean(AValue: Boolean);
     procedure SetKeyAsFloat(AValue: Double);
@@ -221,10 +221,10 @@ type
     procedure SetKeyAsInteger(AValue: Integer);
     procedure SetKeyAsSingle(AValue: Single);
     procedure SetKeyAsString(AValue: String);
-    procedure SetO(pvPath: String; const Value: TSimpleMsgPack);
+    procedure SetO(pvPath: String; const Value: TTNTMsgPack);
 
     function GetS(pvPath: String): string;
-    procedure SetOO(pvPath: Integer; AValue: TSimpleMsgPack);
+    procedure SetOO(pvPath: Integer; AValue: TTNTMsgPack);
     procedure SetS(pvPath: String; const Value: string);
 
     function GetI(pvPath: String): Int64;
@@ -236,7 +236,7 @@ type
     function GetD(pvPath: String): Double;
     procedure SetD(pvPath: String; const Value: Double);
 
-    function GetItems(AIndex: Integer): TSimpleMsgPack;
+    function GetItems(AIndex: Integer): TTNTMsgPack;
     procedure SetSS(pvPath: Integer; AValue: string);
     function GetBB(pvPath: Integer): Boolean;
     procedure SetBB(pvPath: Integer; const Value: Boolean);
@@ -272,24 +272,24 @@ type
     procedure DecodeFromBytes(pvBytes:TBytes);
     //function EncodeToString(AIndent: Boolean): String;
 
-    function Add(pvNameKey, pvValue: string): TSimpleMsgPack; overload;
-    function Add(pvNameKey: string; pvValue: Int64): TSimpleMsgPack; overload;
-    function Add(pvNameKey: string; pvValue: TBytes): TSimpleMsgPack; overload;
-    function Add(pvNameKey: String): TSimpleMsgPack; overload;
+    function Add(pvNameKey, pvValue: string): TTNTMsgPack; overload;
+    function Add(pvNameKey: string; pvValue: Int64): TTNTMsgPack; overload;
+    function Add(pvNameKey: string; pvValue: TBytes): TTNTMsgPack; overload;
+    function Add(pvNameKey: String): TTNTMsgPack; overload;
 
-    function Add(pvNameKey: Integer): TSimpleMsgPack; overload;
+    function Add(pvNameKey: Integer): TTNTMsgPack; overload;
 
-    function Add():TSimpleMsgPack; overload;
+    function Add():TTNTMsgPack; overload;
 
-    procedure Add(ANode: TSimpleMsgPack); overload;
+    procedure Add(ANode: TTNTMsgPack); overload;
 
-    function Add(AName: String; AType: TMsgPackType): TSimpleMsgPack; overload;
-    function Add(AName: Integer; AType: TMsgPackType): TSimpleMsgPack; overload;
-    function Add(AType: TMsgPackType): TSimpleMsgPack; overload;
+    function Add(AName: String; AType: TMsgPackType): TTNTMsgPack; overload;
+    function Add(AName: Integer; AType: TMsgPackType): TTNTMsgPack; overload;
+    function Add(AType: TMsgPackType): TTNTMsgPack; overload;
 
-    function AddArrayChild():TSimpleMsgPack;
+    function AddArrayChild():TTNTMsgPack;
 
-    function ForcePathObject(pvPath:string): TSimpleMsgPack;
+    function ForcePathObject(pvPath:string): TTNTMsgPack;
 
     /// <summary>
     ///  remove and free object
@@ -307,8 +307,8 @@ type
 
     property AsBytes: TBytes read GetAsBytes write SetAsBytes;
 
-    property O[pvPath: String]: TSimpleMsgPack read GetO write SetO;
-    property OO[pvPath: Integer]: TSimpleMsgPack read GetOO write SetOO;
+    property O[pvPath: String]: TTNTMsgPack read GetO write SetO;
+    property OO[pvPath: Integer]: TTNTMsgPack read GetOO write SetOO;
     property S[pvPath: String]: string read GetS write SetS;
     property SS[pvPath: Integer]: string read GetSS write SetSS;
     property I[pvPath: String]: Int64 read GetI write SetI;
@@ -318,7 +318,7 @@ type
     property D[pvPath: String]: Double read GetD write SetD;
     property DD[pvPath: Integer]: Double read GetDD write SetDD;
 
-    property Items[AIndex: Integer]: TSimpleMsgPack read GetItems; default;
+    property Items[AIndex: Integer]: TTNTMsgPack read GetItems; default;
     property Name: String read GetName;
     property DataType: TMsgPackType read FDataType;
     property KeyType: TMsgPackType read FKeyType;
@@ -331,15 +331,15 @@ type
   end;
 
 {$IFDEF  DUMP_MSG_PACK}
-procedure DumpObjMsgPack(AObj: TSimpleMsgPack; Ident: Word; ParentName: String);
+procedure DumpObjMsgPack(AObj: TTNTMsgPack; Ident: Word; ParentName: String);
 {$ENDIF}
 
-function MPO(const AValue: Int64): TSimpleMsgPack; overload;
-function MPO(const AValue: RawByteString): TSimpleMsgPack; overload;
-function MPO(const AValue: Double): TSimpleMsgPack; overload;
-function MPO(const AValue: Single): TSimpleMsgPack; overload;
-function MPO(const AValue: Boolean): TSimpleMsgPack; overload;
-function MPO(const AValue: Variant): TSimpleMsgPack; overload;
+function MPO(const AValue: Int64): TTNTMsgPack; overload;
+function MPO(const AValue: RawByteString): TTNTMsgPack; overload;
+function MPO(const AValue: Double): TTNTMsgPack; overload;
+function MPO(const AValue: Single): TTNTMsgPack; overload;
+function MPO(const AValue: Boolean): TTNTMsgPack; overload;
+function MPO(const AValue: Variant): TTNTMsgPack; overload;
 
 implementation
 
@@ -790,11 +790,11 @@ end;
 /// <summary>
 ///  copy from qmsgpack
 /// </summary>
-procedure writeArray(obj:TSimpleMsgPack; pvStream:TStream);
+procedure writeArray(obj:TTNTMsgPack; pvStream:TStream);
 var
   c, i:Integer;
   lvValue:TMsgPackValue;
-  lvNode:TSimpleMsgPack;
+  lvNode:TTNTMsgPack;
 begin
   C:=obj.Count;
 
@@ -822,16 +822,16 @@ begin
 
   for I := 0 to C-1 do
   begin
-    lvNode:=TSimpleMsgPack(obj.FChildren[I]);
+    lvNode:=TTNTMsgPack(obj.FChildren[I]);
     lvNode.InnerEncodeToStream(pvStream);
   end;
 end;
 
-procedure writeMap(obj:TSimpleMsgPack; pvStream:TStream);
+procedure writeMap(obj:TTNTMsgPack; pvStream:TStream);
 var
   c, i:Integer;
   lvValue:TMsgPackValue;
-  lvNode:TSimpleMsgPack;
+  lvNode:TTNTMsgPack;
 begin
   C:=obj.Count;
   if C<=15 then
@@ -857,7 +857,7 @@ begin
   end;
   for I := 0 to C-1 do
   begin
-    lvNode:=TSimpleMsgPack(obj.FChildren[I]);
+    lvNode:=TTNTMsgPack(obj.FChildren[I]);
 //    k := StrToIntDef(lvNode.FName, -1);
     case lvNode.KeyType of
       mptString: writeString(lvNode.KeyAsString, pvStream);
@@ -892,24 +892,24 @@ begin
 end;
 
 
-constructor TSimpleMsgPack.Create;
+constructor TTNTMsgPack.Create;
 begin
   inherited Create;
   {$IFDEF UNICODE}
-    FChildren := TObjectList<TSimpleMsgPack>.Create(true);
+    FChildren := TObjectList<TTNTMsgPack>.Create(true);
   {$ELSE}
     FChildren := TObjectList.Create(true);
   {$ENDIF}
    FKeyType := mptUnknown;
 end;
 
-constructor TSimpleMsgPack.Create(AType: TMsgPackType);
+constructor TTNTMsgPack.Create(AType: TMsgPackType);
 begin
   Create;
   FDataType := AType;
 end;
 
-procedure TSimpleMsgPack.DecodeFromBytes(pvBytes: TBytes);
+procedure TTNTMsgPack.DecodeFromBytes(pvBytes: TBytes);
 var
   lvStream:TStream;
 begin
@@ -975,7 +975,7 @@ begin
 end;
 }
 
-procedure TSimpleMsgPack.DecodeFromFile(pvFileName: string);
+procedure TTNTMsgPack.DecodeFromFile(pvFileName: string);
 var
   lvFileStream:TFileStream;
 begin
@@ -990,14 +990,14 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.DecodeFromStream(pvStream: TStream);
+procedure TTNTMsgPack.DecodeFromStream(pvStream: TStream);
 begin
   InnerParseFromStream(pvStream);
 end;
 
-function TSimpleMsgPack.DeleteObject(pvPath: String): Boolean;
+function TTNTMsgPack.DeleteObject(pvPath: String): Boolean;
 var
-  lvParent, lvObj:TSimpleMsgPack;
+  lvParent, lvObj:TTNTMsgPack;
   j:Integer;
 begin
   lvObj := InnerFindPathObject(pvPath, lvParent, j);
@@ -1008,7 +1008,7 @@ begin
   end;
 end;
 
-destructor TSimpleMsgPack.Destroy;
+destructor TTNTMsgPack.Destroy;
 begin
   FChildren.Clear;
   FChildren.Free;
@@ -1016,14 +1016,14 @@ begin
   inherited Destroy;
 end;
 
-function TSimpleMsgPack.Add(pvNameKey, pvValue: string): TSimpleMsgPack;
+function TTNTMsgPack.Add(pvNameKey, pvValue: string): TTNTMsgPack;
 begin
   Result := InnerAdd(mptMap);
   Result.KeyAsString := pvNameKey;
   Result.AsString := pvValue;
 end;
 
-function TSimpleMsgPack.Add(pvNameKey: string; pvValue: Int64): TSimpleMsgPack;
+function TTNTMsgPack.Add(pvNameKey: string; pvValue: Int64): TTNTMsgPack;
 begin
   Result := InnerAdd(mptMap);
   Result.KeyAsString := pvNameKey;
@@ -1031,25 +1031,25 @@ begin
 end;
 
 
-function TSimpleMsgPack.Add: TSimpleMsgPack;
+function TTNTMsgPack.Add: TTNTMsgPack;
 begin
   Result := InnerAdd(mptMap);
 end;
 
-procedure TSimpleMsgPack.Add(ANode: TSimpleMsgPack);
+procedure TTNTMsgPack.Add(ANode: TTNTMsgPack);
 begin
   InnerAddToChildren(mptArray, ANode);
 end;
 
-function TSimpleMsgPack.Add(AName: String; AType: TMsgPackType): TSimpleMsgPack;
+function TTNTMsgPack.Add(AName: String; AType: TMsgPackType): TTNTMsgPack;
 begin
   Result := InnerAdd(mptMap);
   Result.FDataType := AType;
   Result.KeyAsString := AName;
 end;
 
-function TSimpleMsgPack.Add(AName: Integer;
-  AType: TMsgPackType): TSimpleMsgPack;
+function TTNTMsgPack.Add(AName: Integer;
+  AType: TMsgPackType): TTNTMsgPack;
 begin
   Result :=  GetOO(AName);
   if Result <> nil then
@@ -1067,13 +1067,13 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.Add(AType: TMsgPackType): TSimpleMsgPack;
+function TTNTMsgPack.Add(AType: TMsgPackType): TTNTMsgPack;
 begin
   Result := InnerAdd;
   Result.FDataType := AType;
 end;
 
-function TSimpleMsgPack.AddArrayChild: TSimpleMsgPack;
+function TTNTMsgPack.AddArrayChild: TTNTMsgPack;
 begin
   if FDataType <> mptArray then
   begin
@@ -1083,7 +1083,7 @@ begin
   Result := InnerAdd;
 end;
 
-function TSimpleMsgPack.Add(pvNameKey: string; pvValue: TBytes): TSimpleMsgPack;
+function TTNTMsgPack.Add(pvNameKey: string; pvValue: TBytes): TTNTMsgPack;
 begin
   Result := InnerAdd(mptMap);
   Result.KeyAsString := pvNameKey;
@@ -1091,20 +1091,20 @@ begin
   Result.FValue := pvValue;
 end;
 
-function TSimpleMsgPack.Add(pvNameKey:String): TSimpleMsgPack;
+function TTNTMsgPack.Add(pvNameKey:String): TTNTMsgPack;
 begin
   Result := InnerAdd(mptMap);
   Result.KeyAsString := pvNameKey;
   Result.FKeyType := mptString;
 end;
 
-function TSimpleMsgPack.Add(pvNameKey: Integer): TSimpleMsgPack;
+function TTNTMsgPack.Add(pvNameKey: Integer): TTNTMsgPack;
 begin
   Result := InnerAdd(mptMap);
   Result.KeyAsInt64 := pvNameKey;
 end;
 
-procedure TSimpleMsgPack.checkObjectDataType(ANewType: TMsgPackType);
+procedure TTNTMsgPack.checkObjectDataType(ANewType: TMsgPackType);
 begin
   if (FDataType <> ANewType) then
   begin
@@ -1112,14 +1112,14 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.clear;
+procedure TTNTMsgPack.clear;
 begin
   FChildren.Clear;
   FDataType := mptNull;
   SetLength(FValue, 0);
 end;
 
-function TSimpleMsgPack.EncodeToBytes: TBytes;
+function TTNTMsgPack.EncodeToBytes: TBytes;
 var
   lvStream:TStream;
 begin
@@ -1134,7 +1134,7 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.EncodeToFile(pvFileName: string);
+procedure TTNTMsgPack.EncodeToFile(pvFileName: string);
 var
   lvFileStream:TFileStream;
 begin
@@ -1150,31 +1150,31 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.EncodeToStream(pvStream: TStream);
+procedure TTNTMsgPack.EncodeToStream(pvStream: TStream);
 begin
   InnerEncodeToStream(pvStream);
 end;
 
-function TSimpleMsgPack.findObj(pvName:string): TSimpleMsgPack;
+function TTNTMsgPack.findObj(pvName:string): TTNTMsgPack;
 var
   w:Integer;
 begin
   w := indexOfCaseSensitive(pvName);
   if w <> -1 then
   begin
-    Result := TSimpleMsgPack(FChildren[w]);
+    Result := TTNTMsgPack(FChildren[w]);
   end else
   begin
     Result := nil;
   end;
 end;
 
-function TSimpleMsgPack.ForcePathObject(pvPath:string): TSimpleMsgPack;
+function TTNTMsgPack.ForcePathObject(pvPath:string): TTNTMsgPack;
 var
   lvName:string;
   ss1:string;
   sPtr:PChar;
-  lvTempObj, lvParent:TSimpleMsgPack;
+  lvTempObj, lvParent:TTNTMsgPack;
   j:Integer;
 begin
   Result := nil;
@@ -1195,7 +1195,7 @@ begin
         j := lvParent.indexOf(lvName);
         if j <> -1 then
         begin
-          Result := TSimpleMsgPack(lvParent.FChildren[j]);
+          Result := TTNTMsgPack(lvParent.FChildren[j]);
         end else
         begin
           Result := lvParent.Add(lvName);
@@ -1218,7 +1218,7 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetAsBoolean: Boolean;
+function TTNTMsgPack.GetAsBoolean: Boolean;
 begin
   if FDataType = mptBoolean then
     Result := PBoolean(FValue)^
@@ -1233,12 +1233,12 @@ begin
 
 end;
 
-function TSimpleMsgPack.GetAsBytes: TBytes;
+function TTNTMsgPack.GetAsBytes: TBytes;
 begin
   Result := FValue;
 end;
 
-function TSimpleMsgPack.GetAsDateTime: TDateTime;
+function TTNTMsgPack.GetAsDateTime: TDateTime;
 begin
   if FDataType in [mptDateTime, mptFloat] then
     Result := PDouble(FValue)^
@@ -1254,7 +1254,7 @@ begin
     Result := 0;
 end;
 
-function TSimpleMsgPack.GetAsFloat: Double;
+function TTNTMsgPack.GetAsFloat: Double;
 begin
   if FDataType in [mptFloat, mptDateTime] then
     Result := PDouble(FValue)^
@@ -1270,7 +1270,7 @@ begin
     Result := 0;
 end;
 
-function TSimpleMsgPack.getAsInteger: Int64;
+function TTNTMsgPack.getAsInteger: Int64;
 begin
   case FDataType of
     mptInteger: Result:=PInt64(FValue)^;
@@ -1279,7 +1279,7 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetAsSingle: Single;
+function TTNTMsgPack.GetAsSingle: Single;
 begin
   if FDataType in [mptFloat, mptDateTime] then
     Result := PDouble(FValue)^
@@ -1295,7 +1295,7 @@ begin
     Result := 0;
 end;
 
-function TSimpleMsgPack.getAsString: String;
+function TTNTMsgPack.getAsString: String;
 var
   l:Cardinal;
 begin
@@ -1348,7 +1348,7 @@ end;
 /// <summary>
 ///   copy from qdac3
 /// </summary>
-function TSimpleMsgPack.GetAsVariant: Variant;
+function TTNTMsgPack.GetAsVariant: Variant;
 var
   w: Integer;
   procedure BytesAsVariant;
@@ -1383,7 +1383,7 @@ begin
       begin
         Result := VarArrayCreate([0, Count - 1], varVariant);
         for w := 0 to Count - 1 do
-          Result[w] := TSimpleMsgPack(FChildren[w]).AsVariant;
+          Result[w] := TTNTMsgPack(FChildren[w]).AsVariant;
       end;
     mptBinary:
       BytesAsVariant;
@@ -1392,9 +1392,9 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetB(pvPath: String): Boolean;
+function TTNTMsgPack.GetB(pvPath: String): Boolean;
 var
-  lvObj:TSimpleMsgPack;
+  lvObj:TTNTMsgPack;
 begin
   lvObj := GetO(pvPath);
   if lvObj = nil then
@@ -1406,19 +1406,19 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetBB(pvPath: Integer): Boolean;
+function TTNTMsgPack.GetBB(pvPath: Integer): Boolean;
 begin
   Result := GetB(IntToStr(pvPath));
 end;
 
-function TSimpleMsgPack.GetCount: Integer;
+function TTNTMsgPack.GetCount: Integer;
 begin
   Result := FChildren.Count;
 end;
 
-function TSimpleMsgPack.GetD(pvPath: String): Double;
+function TTNTMsgPack.GetD(pvPath: String): Double;
 var
-  lvObj:TSimpleMsgPack;
+  lvObj:TTNTMsgPack;
 begin
   lvObj := GetO(pvPath);
   if lvObj = nil then
@@ -1430,14 +1430,14 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetDD(pvPath: Integer): Double;
+function TTNTMsgPack.GetDD(pvPath: Integer): Double;
 begin
   Result := GetD(IntToStr(pvPath));
 end;
 
-function TSimpleMsgPack.GetI(pvPath: String): Int64;
+function TTNTMsgPack.GetI(pvPath: String): Int64;
 var
-  lvObj:TSimpleMsgPack;
+  lvObj:TTNTMsgPack;
 begin
   lvObj := GetO(pvPath);
   if lvObj = nil then
@@ -1449,66 +1449,66 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetItems(AIndex: Integer): TSimpleMsgPack;
+function TTNTMsgPack.GetItems(AIndex: Integer): TTNTMsgPack;
 begin
-  Result := TSimpleMsgPack(FChildren[AIndex]);
+  Result := TTNTMsgPack(FChildren[AIndex]);
 end;
 
-procedure TSimpleMsgPack.SetSS(pvPath: Integer; AValue: string);
+procedure TTNTMsgPack.SetSS(pvPath: Integer; AValue: string);
 begin
   Add(pvPath).AsString := AValue;
   //SetS(pvPath.ToString, AValue);
 end;
 
-function TSimpleMsgPack.GetO(pvPath: String): TSimpleMsgPack;
+function TTNTMsgPack.GetO(pvPath: String): TTNTMsgPack;
 var
-  lvParent:TSimpleMsgPack;
+  lvParent:TTNTMsgPack;
   j:Integer;
 begin
   Result := InnerFindPathObject(pvPath, lvParent, j);
 end;
 
-procedure TSimpleMsgPack.SetII(pvPath: Integer; AValue: Int64);
-var lvObj: TSimpleMsgPack;
+procedure TTNTMsgPack.SetII(pvPath: Integer; AValue: Int64);
+var lvObj: TTNTMsgPack;
 begin
   lvObj := ForcePathObject(IntToStr(pvPath));
   lvObj.AsInteger := AValue;
   lvObj.KeyAsInt64 := pvPath;
 end;
 
-procedure TSimpleMsgPack.SetKeyAsBoolean(AValue: Boolean);
+procedure TTNTMsgPack.SetKeyAsBoolean(AValue: Boolean);
 begin
   setName(AValue);
 end;
 
-procedure TSimpleMsgPack.SetKeyAsFloat(AValue: Double);
+procedure TTNTMsgPack.SetKeyAsFloat(AValue: Double);
 begin
   setName(AValue);
 end;
 
-procedure TSimpleMsgPack.SetKeyAsInt64(AValue: Int64);
+procedure TTNTMsgPack.SetKeyAsInt64(AValue: Int64);
 begin
   setName(AValue);
 end;
 
-procedure TSimpleMsgPack.SetKeyAsInteger(AValue: Integer);
+procedure TTNTMsgPack.SetKeyAsInteger(AValue: Integer);
 begin
   setName(AValue);
 end;
 
-procedure TSimpleMsgPack.SetKeyAsSingle(AValue: Single);
+procedure TTNTMsgPack.SetKeyAsSingle(AValue: Single);
 begin
  setName(AValue);
 end;
 
-procedure TSimpleMsgPack.SetKeyAsString(AValue: String);
+procedure TTNTMsgPack.SetKeyAsString(AValue: String);
 begin
   setName(AValue);
 end;
 
-function TSimpleMsgPack.GetS(pvPath: String): string;
+function TTNTMsgPack.GetS(pvPath: String): string;
 var
-  lvObj:TSimpleMsgPack;
+  lvObj:TTNTMsgPack;
 begin
   lvObj := GetO(pvPath);
   if lvObj = nil then
@@ -1520,28 +1520,28 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.SetOO(pvPath: Integer; AValue: TSimpleMsgPack);
+procedure TTNTMsgPack.SetOO(pvPath: Integer; AValue: TTNTMsgPack);
 begin
   AValue.setName(pvPath);
   InnerAddToChildren(mptMap, AValue);
 end;
 
-function TSimpleMsgPack.indexOf(pvName:string): Integer;
+function TTNTMsgPack.indexOf(pvName:string): Integer;
 begin
   Result := indexOfIgnoreSensitive(LowerCase(pvName));
 end;
 
-function TSimpleMsgPack.indexOfCaseSensitive(pvName:string): Integer;
+function TTNTMsgPack.indexOfCaseSensitive(pvName:string): Integer;
 var
   j, l: Integer;
-  lvObj:TSimpleMsgPack;
+  lvObj:TTNTMsgPack;
 begin
   Result := -1;
   l := Length(pvName);
   if l = 0 then exit;
   for j := 0 to FChildren.Count-1 do
   begin
-    lvObj := TSimpleMsgPack(FChildren[j]);
+    lvObj := TTNTMsgPack(FChildren[j]);
     //if Length(lvObj.FName) = l then
     if Length(lvObj.KeyAsString) = l then
     begin
@@ -1555,11 +1555,11 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.indexOfIgnoreSensitive(pvLowerCaseName: string):
+function TTNTMsgPack.indexOfIgnoreSensitive(pvLowerCaseName: string):
     Integer;
 var
   j, l: Integer;
-  lvObj:TSimpleMsgPack;
+  lvObj:TTNTMsgPack;
   FLowerName: String;
 begin
   Result := -1;
@@ -1567,7 +1567,7 @@ begin
   if l = 0 then exit;
   for j := 0 to FChildren.Count-1 do
   begin
-    lvObj := TSimpleMsgPack(FChildren[j]);
+    lvObj := TTNTMsgPack(FChildren[j]);
     FLowerName := LowerCase(lvObj.KeyAsString);
     if Length(FLowerName) = l then
     begin
@@ -1580,12 +1580,12 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetII(pvPath: Integer): Int64;
+function TTNTMsgPack.GetII(pvPath: Integer): Int64;
 begin
   Result := GetI(IntToStr(pvPath));
 end;
 
-function TSimpleMsgPack.GetKeyAsBoolean: Boolean;
+function TTNTMsgPack.GetKeyAsBoolean: Boolean;
 begin
   case FKeyType of
     mptInteger: Result := KeyAsInt64 <> 0;
@@ -1596,7 +1596,7 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetKeyAsFloat: Double;
+function TTNTMsgPack.GetKeyAsFloat: Double;
 begin
   case FKeyType of
     mptInteger: Result := KeyAsInt64;
@@ -1608,7 +1608,7 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetKeyAsInt64: Int64;
+function TTNTMsgPack.GetKeyAsInt64: Int64;
 begin
   case FKeyType of
     mptInteger: Result := PInt64(FKeyName)^;
@@ -1620,12 +1620,12 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetKeyAsInteger: Integer;
+function TTNTMsgPack.GetKeyAsInteger: Integer;
 begin
   Result := KeyAsInt64;
 end;
 
-function TSimpleMsgPack.GetKeyAsSingle: Single;
+function TTNTMsgPack.GetKeyAsSingle: Single;
 begin
   case FKeyType of
     mptInteger: Result := KeyAsInt64;
@@ -1637,7 +1637,7 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetKeyAsString: String;
+function TTNTMsgPack.GetKeyAsString: String;
 begin
   case FKeyType of
     mptString: Result := StringOf(FKeyName);
@@ -1648,33 +1648,33 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.GetName: String;
+function TTNTMsgPack.GetName: String;
 begin
   Result := KeyAsString;
 end;
 
-function TSimpleMsgPack.GetOO(pvPath: Integer): TSimpleMsgPack;
+function TTNTMsgPack.GetOO(pvPath: Integer): TTNTMsgPack;
 begin
   Result := GetO(IntToStr(pvPath));
 end;
 
-function TSimpleMsgPack.GetSS(pvPath: Integer): string;
+function TTNTMsgPack.GetSS(pvPath: Integer): string;
 begin
   Result := GetS(IntToStr(pvPath));
 end;
 
-function TSimpleMsgPack.InnerAdd(pvDataType: TMsgPackType): TSimpleMsgPack;
+function TTNTMsgPack.InnerAdd(pvDataType: TMsgPackType): TTNTMsgPack;
 begin
-  Result := TSimpleMsgPack.Create;
+  Result := TTNTMsgPack.Create;
   Result.FDataType := mptUnknown;
   InnerAddToChildren(pvDataType, Result);
 end;
 
-function TSimpleMsgPack.InnerAdd: TSimpleMsgPack;
+function TTNTMsgPack.InnerAdd: TTNTMsgPack;
 begin
   if self.FDataType in [mptMap, mptArray] then
   begin
-    Result := TSimpleMsgPack.Create;
+    Result := TTNTMsgPack.Create;
     Result.FDataType := mptUnknown;
     Result.FParent := self;
     FChildren.Add(Result);
@@ -1687,15 +1687,15 @@ begin
 
 end;
 
-procedure TSimpleMsgPack.InnerAddToChildren(pvDataType: TMsgPackType; obj:
-    TSimpleMsgPack);
+procedure TTNTMsgPack.InnerAddToChildren(pvDataType: TMsgPackType; obj:
+    TTNTMsgPack);
 begin
   checkObjectDataType(pvDataType);
   obj.FParent := self;
   FChildren.Add(obj);
 end;
 
-procedure TSimpleMsgPack.InnerEncodeToStream(pvStream:TStream);
+procedure TTNTMsgPack.InnerEncodeToStream(pvStream:TStream);
 begin
   case FDataType of
     mptUnknown, mptNull: WriteNull(pvStream);
@@ -1710,13 +1710,13 @@ begin
   end;
 end;
 
-function TSimpleMsgPack.InnerFindPathObject(pvPath: string; var vParent:
-    TSimpleMsgPack; var vIndex: Integer): TSimpleMsgPack;
+function TTNTMsgPack.InnerFindPathObject(pvPath: string; var vParent:
+    TTNTMsgPack; var vIndex: Integer): TTNTMsgPack;
 var
   lvName:string;
   ss1:string;
   sPtr:PChar;
-  lvTempObj, lvParent:TSimpleMsgPack;
+  lvTempObj, lvParent:TTNTMsgPack;
   j:Integer;
 begin
   ss1 := pvPath;
@@ -1738,7 +1738,7 @@ begin
         j := lvParent.indexOf(lvName);
         if j <> -1 then
         begin
-          Result := TSimpleMsgPack(lvParent.FChildren[j]);
+          Result := TTNTMsgPack(lvParent.FChildren[j]);
           vIndex := j;
           vParent := lvParent;
         end else
@@ -1763,7 +1763,7 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.InnerParseFromStream(pvStream: TStream);
+procedure TTNTMsgPack.InnerParseFromStream(pvStream: TStream);
 var
   lvByte:Byte;
   lvBData: array[0..15] of Byte;
@@ -1771,7 +1771,7 @@ var
   lvAnsiStr:{$IFDEF UNICODE}TBytes{$ELSE}AnsiString{$ENDIF};
   l, j:Cardinal;
   i64 :Int64;
-  lvObj:TSimpleMsgPack;
+  lvObj:TTNTMsgPack;
 begin
   pvStream.Read(lvByte, 1);
   if lvByte in [$00 .. $7F] then   //positive fixint	0xxxxxxx	0x00 - 0x7f
@@ -2190,7 +2190,7 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.LoadBinaryFromFile(pvFileName:String);
+procedure TTNTMsgPack.LoadBinaryFromFile(pvFileName:String);
 var
   lvFileStream:TFileStream;
 begin
@@ -2205,7 +2205,7 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.LoadBinaryFromStream(pvStream: TStream; pvLen:
+procedure TTNTMsgPack.LoadBinaryFromStream(pvStream: TStream; pvLen:
     cardinal = 0);
 begin
   FDataType := mptBinary;
@@ -2221,7 +2221,7 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.SaveBinaryToFile(pvFileName: String);
+procedure TTNTMsgPack.SaveBinaryToFile(pvFileName: String);
 var
   lvFileStream:TFileStream;
 begin
@@ -2238,53 +2238,53 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.SaveBinaryToStream(pvStream: TStream);
+procedure TTNTMsgPack.SaveBinaryToStream(pvStream: TStream);
 begin
   pvStream.WriteBuffer(FValue[0], Length(FValue));
 end;
 
-procedure TSimpleMsgPack.SetAsBoolean(const Value: Boolean);
+procedure TTNTMsgPack.SetAsBoolean(const Value: Boolean);
 begin
   FDataType := mptBoolean;
   SetLength(FValue, 1);
   PBoolean(@FValue[0])^ := Value;
 end;
 
-procedure TSimpleMsgPack.SetAsBytes(const Value: TBytes);
+procedure TTNTMsgPack.SetAsBytes(const Value: TBytes);
 begin
   FDataType := mptBinary;
   FValue := Value;
 end;
 
-procedure TSimpleMsgPack.SetAsDateTime(const Value: TDateTime);
+procedure TTNTMsgPack.SetAsDateTime(const Value: TDateTime);
 begin
   FDataType := mptDateTime;
   SetLength(FValue, SizeOf(TDateTime));
   PDouble(@FValue[0])^ := Value;
 end;
 
-procedure TSimpleMsgPack.SetAsFloat(const Value: Double);
+procedure TTNTMsgPack.SetAsFloat(const Value: Double);
 begin
   FDataType := mptFloat;
   SetLength(FValue, SizeOf(Double));
   PDouble(@FValue[0])^ := Value;
 end;
 
-procedure TSimpleMsgPack.setAsInteger(pvValue: Int64);
+procedure TTNTMsgPack.setAsInteger(pvValue: Int64);
 begin
   FDataType := mptInteger;
   SetLength(FValue, SizeOf(Int64));
   PInt64(@FValue[0])^ := pvValue;
 end;
 
-procedure TSimpleMsgPack.SetAsSingle(const Value: Single);
+procedure TTNTMsgPack.SetAsSingle(const Value: Single);
 begin
   FDataType := mptSingle;
   SetLength(FValue, SizeOf(Single));
   PSingle(FValue)^ := Value;
 end;
 
-procedure TSimpleMsgPack.setAsString(pvValue: string);
+procedure TTNTMsgPack.setAsString(pvValue: string);
 begin
   FDataType := mptString;
   if SizeOf(Char) = 2 then
@@ -2301,7 +2301,7 @@ end;
 /// <summary>
 ///   copy from qdac3
 /// </summary>
-procedure TSimpleMsgPack.SetAsVariant(const Value: Variant);
+procedure TTNTMsgPack.SetAsVariant(const Value: Variant);
 var
   j: Integer;
   AType: TVarType;
@@ -2360,41 +2360,41 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.SetB(pvPath: String; const Value: Boolean);
+procedure TTNTMsgPack.SetB(pvPath: String; const Value: Boolean);
 var
-  lvObj:TSimpleMsgPack;
+  lvObj:TTNTMsgPack;
 begin
   lvObj := ForcePathObject(pvPath);
   lvObj.AsBoolean := Value;
 end;
 
-procedure TSimpleMsgPack.SetBB(pvPath: Integer; const Value: Boolean);
+procedure TTNTMsgPack.SetBB(pvPath: Integer; const Value: Boolean);
 begin
   Add(pvPath).AsBoolean := Value;
 end;
 
-procedure TSimpleMsgPack.SetD(pvPath: String; const Value: Double);
+procedure TTNTMsgPack.SetD(pvPath: String; const Value: Double);
 var
-  lvObj:TSimpleMsgPack;
+  lvObj:TTNTMsgPack;
 begin
   lvObj := ForcePathObject(pvPath);
   lvObj.AsFloat := Value;
 end;
 
-procedure TSimpleMsgPack.SetDD(pvPath: Integer; const Value: Double);
+procedure TTNTMsgPack.SetDD(pvPath: Integer; const Value: Double);
 begin
   Add(pvPath).AsFloat := Value;
 end;
 
-procedure TSimpleMsgPack.SetI(pvPath: String; const Value: Int64);
+procedure TTNTMsgPack.SetI(pvPath: String; const Value: Int64);
 var
-  lvObj:TSimpleMsgPack;
+  lvObj:TTNTMsgPack;
 begin
   lvObj := ForcePathObject(pvPath);
   lvObj.AsInteger := Value;
 end;
 
-procedure TSimpleMsgPack.setName(pvName: string);
+procedure TTNTMsgPack.setName(pvName: string);
 begin
 //  FName := pvName;
 //  FLowerName := LowerCase(FName);
@@ -2402,40 +2402,40 @@ begin
   FKeyName := BytesOf(pvName);
 end;
 
-procedure TSimpleMsgPack.setName(pvName: Int64);
+procedure TTNTMsgPack.setName(pvName: Int64);
 begin
   FKeyType := mptInteger;
   SetLength(FKeyName, SizeOf(Int64));
   PInt64(@FKeyName[0])^ := pvName;
 end;
 
-procedure TSimpleMsgPack.setName(pvName: Boolean);
+procedure TTNTMsgPack.setName(pvName: Boolean);
 begin
   FKeyType := mptBoolean;
   SetLength(FKeyName, 1);
   FKeyName[0] := Integer(pvName);
 end;
 
-procedure TSimpleMsgPack.setName(pvName: Double);
+procedure TTNTMsgPack.setName(pvName: Double);
 begin
   FKeyType := mptFloat;
   SetLength(FKeyName, sizeof(Double));
   PDouble(@FKeyName[0])^ := pvName;
 end;
 
-procedure TSimpleMsgPack.setName(pvName: Single);
+procedure TTNTMsgPack.setName(pvName: Single);
 begin
   FKeyType := mptSingle;
   SetLength(FKeyName, sizeof(Single));
   PSingle(@FKeyName[0])^ := pvName;
 end;
 
-procedure TSimpleMsgPack.SetO(pvPath: String; const Value: TSimpleMsgPack);
+procedure TTNTMsgPack.SetO(pvPath: String; const Value: TTNTMsgPack);
 var
   lvName:String;
   ss1:String;
   sPtr:PChar;
-  lvTempObj, lvParent:TSimpleMsgPack;
+  lvTempObj, lvParent:TTNTMsgPack;
   j:Integer;
 begin
   ss1 := pvPath;
@@ -2455,7 +2455,7 @@ begin
         j := lvParent.indexOf(lvName);
         if j <> -1 then
         begin
-          lvTempObj := TSimpleMsgPack(lvParent.FChildren[j]);
+          lvTempObj := TTNTMsgPack(lvParent.FChildren[j]);
           lvParent.FChildren[j] := Value;
           lvTempObj.Free;  // free old
         end else
@@ -2481,9 +2481,9 @@ begin
   end;
 end;
 
-procedure TSimpleMsgPack.SetS(pvPath: String; const Value: string);
+procedure TTNTMsgPack.SetS(pvPath: String; const Value: string);
 var
-  lvObj:TSimpleMsgPack;
+  lvObj:TTNTMsgPack;
 begin
   lvObj := ForcePathObject(pvPath);
   lvObj.AsString := Value;
@@ -2496,7 +2496,7 @@ type
     function ToString: String;
   end;
 
-procedure DumpObjMsgPack(AObj: TSimpleMsgPack; Ident: Word; ParentName: String);
+procedure DumpObjMsgPack(AObj: TTNTMsgPack; Ident: Word; ParentName: String);
 var i: Integer;
 begin
   if AObj.Name <> '' then
@@ -2533,40 +2533,40 @@ begin
 end;
 
 
-function MPO(const AValue: Int64): TSimpleMsgPack; overload;
+function MPO(const AValue: Int64): TTNTMsgPack; overload;
 begin
-  Result := TSimpleMsgPack.Create(mptInteger);
+  Result := TTNTMsgPack.Create(mptInteger);
   Result.AsInteger := AValue;
 end;
 
-function MPO(const AValue: RawByteString): TSimpleMsgPack; overload;
+function MPO(const AValue: RawByteString): TTNTMsgPack; overload;
 begin
-  Result := TSimpleMsgPack.Create(mptString);
+  Result := TTNTMsgPack.Create(mptString);
   Result.AsString := AValue;
 end;
 
-function MPO(const AValue: Double): TSimpleMsgPack; overload;
+function MPO(const AValue: Double): TTNTMsgPack; overload;
 begin
-  Result := TSimpleMsgPack.Create(mptFloat);
+  Result := TTNTMsgPack.Create(mptFloat);
   Result.AsFloat := AValue;
 end;
 
-function MPO(const AValue: Single): TSimpleMsgPack; overload;
+function MPO(const AValue: Single): TTNTMsgPack; overload;
 begin
-  Result := TSimpleMsgPack.Create(mptSingle);
+  Result := TTNTMsgPack.Create(mptSingle);
   Result.AsSingle := AValue;
 end;
 
-function MPO(const AValue: Boolean): TSimpleMsgPack; overload;
+function MPO(const AValue: Boolean): TTNTMsgPack; overload;
 begin
-  Result := TSimpleMsgPack.Create(mptBoolean);
+  Result := TTNTMsgPack.Create(mptBoolean);
   Result.AsBoolean := AValue;
 end;
 
 
-function MPO(const AValue: Variant): TSimpleMsgPack; overload;
+function MPO(const AValue: Variant): TTNTMsgPack; overload;
 begin
-  Result := TSimpleMsgPack.Create;
+  Result := TTNTMsgPack.Create;
   Result.AsVariant := AValue;
 end;
 

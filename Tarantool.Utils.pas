@@ -18,6 +18,8 @@ function ReadString(var P: Pointer): String;
 function IsArrayRect(P: Pointer; Dims: Integer): Boolean;
 procedure GetDims(ArrP: Pointer; DimAr: TNativeIntDynArray; Dims: Integer);
 
+function GetDynArrayNextInfo2(typeInfo: PTypeInfo; var Name: string): PTypeInfo;
+function GetDynArrayNextInfo(typeInfo: PTypeInfo): PTypeInfo;
 
 implementation
 uses
@@ -186,6 +188,36 @@ begin
     end;
   end;
 end;
+
+function GetDynArrayNextInfo(typeInfo: PTypeInfo): PTypeInfo;
+var
+  S: string;
+begin
+  Result := GetDynArrayNextInfo2(typeInfo, S);
+end;
+
+function GetDynArrayNextInfo2(typeInfo: PTypeInfo; var Name: string): PTypeInfo;
+var
+  P: Pointer;
+  ppInfo: PPTypeInfo;
+begin
+  Result := nil;
+  P := Pointer(typeInfo);
+  ReadByte(P);            { kind }
+  Name := ReadString(P);  { synmame }
+  ReadLong(P);            { elsize }
+  ppInfo := ReadPointer(P);
+  if ppInfo <> nil then
+    Result := ppInfo^   { eltype or 0 if not destructable }
+  else
+  begin
+    ReadLong(P);      { vartype }
+    ppInfo := ReadPointer(P); { elttype, even if not destructable, 0 if type has no RTTI }
+    if ppInfo <> nil then
+      Result := ppInfo^;
+  end;
+end;
+
 
 
 end.

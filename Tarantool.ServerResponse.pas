@@ -21,7 +21,7 @@ type
     property Code: integer read GetCode;
     property RequestId: Int64 read GetRequestId;
     property Connection: ITNTConnection read GetConnection;
-    constructor Create(APacker: IPacker; AConnection: ITNTConnection); virtual;
+    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection); virtual;
 
   end;
 
@@ -59,7 +59,7 @@ end;
 
 { TTNTResponse }
 
-constructor TTNTResponce.Create(APacker: IPacker; AConnection: ITNTConnection);
+constructor TTNTResponce.Create(APacker: ITNTPacker; AConnection: ITNTConnection);
 begin
  if APacker <> nil then
  begin
