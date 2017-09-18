@@ -625,19 +625,40 @@ end;
 function  ConvertVariantToNativeArrayElem(ArrayInfo, ElemInfo: PTypeInfo; Dims, CurDim: Integer; AData: Pointer; AValue: Variant): Pointer;
 var
   LDyn: Pointer;
+  PElem: Pointer;
+  PChild: Pointer;
   CurElement: Integer;
-  Len: Integer;
+  Len, I: Integer;
 begin
  if AData <> nil then
  begin
-  LDyn := Pointer(AData^);
+  if Dims > 1 then
+  begin
+    LDyn := Pointer(AData^);
+    Len := TTNTVariantData(AValue).Count;
+    DynArraySetLength(LDyn, ArrayInfo, 1, @Len);
+    Result := LDyn;
+    PElem := LDyn;
+    Dec(Dims);
+    CurElement := 0;
+    for i := 0 to Len -1 do
+      begin
+       PChild := ConvertVariantToNativeArrayElem(GetDynArrayNextInfo(ArrayInfo), ElemInfo, Dims, CurDim, PElem, TTNTVariantData(AValue).Values[I]);
+       Pointer(PElem^) := PChild;
+       PElem := Pointer(NativeUInt(PElem) + SizeOf(pointer));
+      end;
+  end else if Dims = 1 then
+  begin
+    LDyn := Pointer(AData^);
 
-  Len := TTNTVariantData(AValue).Count;
-  DynArraySetLength(LDyn, ArrayInfo, 1, @Len);
-  Result := LDyn;
-  CurElement := 0;
-  if Len > 0 then
-   ReadRow(ElemInfo, CurElement, Len, AData, AValue);
+    Len := TTNTVariantData(AValue).Count;
+    DynArraySetLength(LDyn, ArrayInfo, 1, @Len);
+    Result := LDyn;
+    PElem := LDyn;
+    CurElement := 0;
+    if Len > 0 then
+     ReadRow(ElemInfo, CurElement, Len, PElem, AValue);
+  end;
  end;
 end;
 

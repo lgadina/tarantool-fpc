@@ -5,6 +5,17 @@ interface
 uses Tarantool.SimpleMsgPack, System.TypInfo;
 
 function ObjectToMsgPack(AObject: TObject): TTNTMsgPack;
+function MsgPackToObject(AMsgPack: TTNTMsgPack; AObjectClass: TClass): TObject; overload;
+procedure MsgPackToObject(AInstance: TObject; AMsgPack: TTNTMsgPack); overload;
+
+type
+  TObjectHelper = class helper for TObject
+  private
+    function GetAsMsgPack: TTNTMsgPack;
+    procedure SetAsMsgPack(const Value: TTNTMsgPack);
+  public
+    property AsMsgPack: TTNTMsgPack read GetAsMsgPack write SetAsMsgPack;
+  end;
 
 implementation
 uses
@@ -352,6 +363,200 @@ begin
  SetLength(FArr2, Length(FArr2) + 1);
  FArr2[Length(FArr2)-1] := AByte;
  Result := Length(FArr2) - 1;
+end;
+
+
+type
+  PTObject = ^TObject;
+
+procedure ReadRow(AInfo: PTypeInfo; var CurElement: Integer; ASize: Integer; AData: Pointer; AValue: TTNTMsgPack);
+var i: Integer;
+    TypeData: PTypeData;
+    v: TTNTMsgPack;
+begin
+  if AInfo^.Kind = tkClass then
+   begin
+    for i := 0 to ASize - 1 do
+    begin
+     PTObject(AData)^ := MsgPackToObject(AValue[I], GetTypeData(AInfo).ClassType);
+     AData := Pointer(NativeUInt(AData) + SizeOf(Pointer));
+     Inc(CurElement);
+    end;
+   end else
+  if AInfo.Kind = tkVariant then
+  begin
+   for i := 0 to ASize - 1 do
+   begin
+    Variant(PVarData(AData)^) := AValue[I].AsVariant;
+    AData := Pointer(NativeUInt(AData) + TypeData^.elSize);
+   end;
+  end else
+  begin
+    TypeData := GetTypeData(AInfo);
+    for i := 0 to ASize - 1 do
+      begin
+        v := AValue[I];
+        case AInfo.Kind of
+          tkInteger: case TypeData^.OrdType of
+                      otSByte, otUByte:  PByte(AData)^ := v.AsInteger;
+                      otSWord, otUWord: PSmallInt(AData)^ := v.AsInteger;
+                      otSLong, otULong: PInteger(AData)^ := v.AsInteger;
+                     end;
+          tkFloat: case TypeData^.FloatType of
+                     ftSingle: PSingle(AData)^ := v.AsFloat;
+                     ftDouble: PDouble(AData)^ := V.AsFloat;
+                     ftComp: PComp(AData)^ := v.AsFloat;
+                     ftCurr: PCurrency(AData)^ := v.AsFloat;
+                     ftExtended: PExtended(AData)^ := v.AsFloat;
+                   end;
+          tkWString: PWideString(AData)^ := v.AsString;
+          tkString: PShortString(AData)^ := v.AsString;
+          tkLString: PAnsiString(AData)^ := v.AsString;
+          tkUString: PUnicodeString(AData)^ := v.AsString;
+//          tkChar: PChar(AData)^ := Char(v);
+//          tkWChar: PWideChar(AData)^ := v;
+          tkInt64: PInt64(AData)^ := v.AsInteger;
+          tkEnumeration: PByte(AData)^ := GetEnumValue(AInfo, v.AsString);
+        end;
+        AData := Pointer(NativeUInt(AData) + TypeData^.elSize);
+      end;
+  end;
+end;
+
+
+function  ConvertMsgPackToNativeArrayElem(ArrayInfo, ElemInfo: PTypeInfo; Dims, CurDim: Integer; AData: Pointer; AValue: TTNTMsgPack): Pointer;
+var
+  LDyn: Pointer;
+  PElem: Pointer;
+  PChild: Pointer;
+  CurElement: Integer;
+  Len, I: Integer;
+begin
+ if AData <> nil then
+ begin
+  if Dims > 1 then
+  begin
+    LDyn := Pointer(AData^);
+    Len := AValue.Count;
+    DynArraySetLength(LDyn, ArrayInfo, 1, @Len);
+    Result := LDyn;
+    PElem := LDyn;
+    Dec(Dims);
+    CurElement := 0;
+    for i := 0 to Len -1 do
+      begin
+       PChild := ConvertMsgPackToNativeArrayElem(GetDynArrayNextInfo(ArrayInfo), ElemInfo, Dims, CurDim, PElem, AValue[I]);
+       Pointer(PElem^) := PChild;
+       PElem := Pointer(NativeUInt(PElem) + SizeOf(pointer));
+      end;
+  end else if Dims = 1 then
+  begin
+    LDyn := Pointer(AData^);
+
+    Len := AValue.Count;
+    DynArraySetLength(LDyn, ArrayInfo, 1, @Len);
+    Result := LDyn;
+    PElem := LDyn;
+    CurElement := 0;
+    if Len > 0 then
+     ReadRow(ElemInfo, CurElement, Len, PElem, AValue);
+  end;
+ end;
+end;
+
+
+function ConvertMsgPackToNativeArray(AData: Pointer; ATypeInfo: PTypeInfo; AValue: TTNTMsgPack): Pointer;
+var
+   ElemInfo: PTypeInfo;
+   Dims: Integer;
+begin
+  GetDynArrayElementTypeInfo(ATypeInfo, ElemInfo, Dims);
+  Result := ConvertMsgPackToNativeArrayElem(ATypeInfo, ElemInfo, Dims, 0, AData, AValue);
+end;
+
+
+procedure SetInstanceProp(AInstance: TObject; APropInfo: PPropInfo; AMsgPack: TTNTMsgPack);
+var
+    obj: TObject;
+    ArrayPtr: Pointer;
+begin
+  if (APropInfo<>nil) and (AInstance<>nil) then
+  case APropInfo^.PropType^.Kind of
+  tkInt64{$ifdef FPC}, tkQWord{$endif}:
+      SetInt64Prop(AInstance,APropInfo,AMsgPack.AsInteger);
+  tkEnumeration: if APropInfo^.PropType^.Name = 'Boolean' then
+                    SetOrdProp(AInstance, APropInfo, Ord(AMsgPack.AsBoolean))
+                  else
+                    SetEnumProp(AInstance, APropInfo, AMsgPack.AsString);
+  tkInteger, tkSet:
+    SetOrdProp(AInstance,APropInfo,AMsgPack.AsInteger);
+  {$ifdef NEXTGEN}
+  tkUString: SetStrProp(AInstance,APropInfo,AMsgPack.AsString);
+  {$else}
+  {$ifdef FPC}tkAString,{$endif} tkLString: SetStrProp(AInstance,APropInfo,AMsgPack.AsString);
+  tkWString:
+      SetWideStrProp(AInstance,APropInfo,AMsgPack.AsString);
+  {$ifdef UNICODE}
+  tkUString:
+      SetUnicodeStrProp(AInstance,APropInfo,AMsgPack.AsString);
+  {$endif UNICODE}
+  {$endif NEXTGEN}
+  tkFloat:
+      SetFloatProp(AInstance,APropInfo,AMsgPack.AsFloat);
+  tkVariant:
+    SetVariantProp(AInstance,APropInfo,AMsgPack.AsVariant);
+  tkDynArray: begin
+                ArrayPtr := nil;
+                ArrayPtr := ConvertMsgPackToNativeArray(@ArrayPtr, APropInfo^.PropType^, AMsgPack);
+                SetDynArrayProp(AInstance, APropInfo, ArrayPtr);
+              end;
+  tkClass: begin
+            obj := GetObjectProp(AInstance, APropInfo);
+             if obj<>nil then
+              FreeAndNil(obj);
+            obj := MsgPackToObject(AMsgPack, GetTypeData(APropInfo^.PropType^).ClassType);
+             if obj<>nil then
+              SetOrdProp(AInstance,APropInfo,NativeInt(obj));
+           end;
+  end;
+end;
+
+function MsgPackToObject(AMsgPack: TTNTMsgPack; AObjectClass: TClass): TObject;
+var i: Integer;
+begin
+
+ if AMsgPack.DataType = mptMap then
+  begin
+    Result := AObjectClass.Create;
+    for I := 0 to AMsgPack.Count - 1 do
+      begin
+        SetInstanceProp(Result, GetPropInfo(Result, AMsgPack[i].Name), AMsgPack[i]);
+      end;
+  end;
+end;
+
+procedure MsgPackToObject(AInstance: TObject; AMsgPack: TTNTMsgPack);
+var i: Integer;
+begin
+ if AMsgPack.DataType = mptMap then
+  begin
+    for I := 0 to AMsgPack.Count - 1 do
+      begin
+        SetInstanceProp(AInstance, GetPropInfo(AInstance, AMsgPack[i].Name), AMsgPack[i]);
+      end;
+  end;
+end;
+
+{ TObjectHelper }
+
+function TObjectHelper.GetAsMsgPack: TTNTMsgPack;
+begin
+ Result := ObjectToMsgPack(Self);
+end;
+
+procedure TObjectHelper.SetAsMsgPack(const Value: TTNTMsgPack);
+begin
+ MsgPackToObject(Self, Value);
 end;
 
 initialization
