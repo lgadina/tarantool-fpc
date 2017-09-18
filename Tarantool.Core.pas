@@ -4,9 +4,8 @@ interface
 uses
    Tarantool.Interfaces;
 
-
-function NewConnection(AHost: String; APort: Word; AUseSSL: Boolean = False;
-   AUsername: String = ''; APassword : String = ''): ITNTConnection;
+function NewConnection(AHost: String; APort: Word; APooled: Boolean; AMaxPoolSize: Integer = 10;
+    AUseSSL: Boolean = False; AUsername: String = ''; APassword : String = ''): ITNTConnection;
 
 implementation
 uses System.SysUtils
@@ -28,7 +27,8 @@ uses System.SysUtils
   , Tarantool.SelectRequest
   , Tarantool.Space
   , Tarantool.CallRequest
-  , Tarantool.SimpleMsgPack;
+  , Tarantool.SimpleMsgPack
+  , Tarantool.Pool;
 
 
 type
@@ -389,15 +389,33 @@ end;
 
 
 
-function NewConnection(AHost: String; APort: Word; AUseSSL: Boolean = False;
+function NewConnection(AHost: String; APort: Word; APooled: Boolean; AMaxPoolSize: Integer = 10; AUseSSL: Boolean = False;
    AUsername: String = ''; APassword : String = ''): ITNTConnection;
+var Conn: ITNTConnection;
 begin
-  Result := TTNTConnection.Create;
-  Result.HostName := AHost;
-  Result.Port := APort;
-  Result.UserName := AUsername;
-  Result.UseSSL := AUseSSL;
-  Result.Password := APassword;
+ if APooled then
+  begin
+    if IsPoolExist then
+     Result := TNTConnectionPool().Get
+    else
+    begin
+      Conn := TTNTConnection.Create;
+      Conn.HostName := AHost;
+      Conn.Port := APort;
+      Conn.UserName := AUsername;
+      Conn.UseSSL := AUseSSL;
+      Conn.Password := APassword;
+      Result := TNTConnectionPool(AMaxPoolSize, Conn).Get;
+    end;
+  end else
+  begin
+    Result := TTNTConnection.Create;
+    Result.HostName := AHost;
+    Result.Port := APort;
+    Result.UserName := AUsername;
+    Result.UseSSL := AUseSSL;
+    Result.Password := APassword;
+  end;
 end;
 
 end.

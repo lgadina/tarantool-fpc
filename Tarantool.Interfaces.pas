@@ -121,6 +121,12 @@ type
     function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
   end;
 
+  ITNTConnectionPool = interface
+    ['{515B3C72-74EC-4CCB-88C3-DF8E71FCECA5}']
+    function Get: ITNTConnection;
+    procedure Put(AConnection: ITNTConnection);
+  end;
+
   ITNTCommand = interface
     ['{FC975180-CD4F-4900-9D36-62DB2346A7EE}']
     function GetCommand: Integer;
