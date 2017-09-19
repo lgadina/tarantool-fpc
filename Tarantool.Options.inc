@@ -1,5 +1,10 @@
 {.DEFINE DUMP_MSG_PACK}
 
 {$IFDEF DUMP_MSG_PACK}
-  {$MESSAGE WARN 'Включен дамп MessagePack'}
+  {$MESSAGE WARN 'Р’РєР»СЋС‡РµРЅ РґР°РјРї MessagePack'}
+{$ENDIF}
+
+{$IFDEF FPC}
+        {$MODESWITCH ADVANCEDRECORDS}
+        {$MODESWITCH TYPEHELPERS}
 {$ENDIF}

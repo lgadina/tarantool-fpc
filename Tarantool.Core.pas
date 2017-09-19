@@ -8,10 +8,17 @@ function NewConnection(AHost: String; APort: Word; AMaxPoolSize: Integer = 10;
     AUseSSL: Boolean = False; AUsername: String = ''; APassword : String = ''): ITNTConnection;
 
 implementation
-uses System.SysUtils
+uses
+{$IfDef FPC}
+    SysUtils
+{$Else}
+    System.SysUtils
+{$EndIf}
   , IdTCPClient
   , IdIOHandlerSocket
+{$IfNDef FPC}
   , IdSSLOpenSSL
+{$EndIf}
   , IdGlobal
   , IdContext
   , IdTCPConnection

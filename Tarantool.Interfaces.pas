@@ -2,7 +2,12 @@ unit Tarantool.Interfaces;
 
 interface
 
-uses System.SysUtils
+uses
+{$IfDef FPC}
+   SysUtils
+{$Else}
+   System.SysUtils
+{$EndIf}
  , IdGlobal
  , Tarantool.SimpleMsgPack
  , Tarantool.Iterator;

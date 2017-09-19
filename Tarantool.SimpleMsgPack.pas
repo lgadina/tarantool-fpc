@@ -1,4 +1,4 @@
-﻿{$I Tarantool.Options.Inc}
+﻿{$I Tarantool.Options.inc}
 
 (*
    unit Owner: D10.Mofen, qdac.swish
@@ -101,6 +101,12 @@ type
 
   TMsgPackType = (mptUnknown, mptNull, mptMap, mptArray, mptString, mptInteger,
   mptBoolean, mptFloat, mptSingle, mptDateTime, mptBinary);
+
+type
+  TMsgPackTypeHelper = record helper for TMsgPackType
+  public
+    function ToString: String;
+  end;
 
   // reserved
   IMsgPack = interface
@@ -2489,12 +2495,6 @@ begin
   lvObj.AsString := Value;
 end;
 
-
-type
-  TMsgPackTypeHelper = record helper for TMsgPackType
-  public
-    function ToString: String;
-  end;
 
 procedure DumpObjMsgPack(AObj: TTNTMsgPack; Ident: Word; ParentName: String);
 var i: Integer;

@@ -1,4 +1,3 @@
-{$I SynCrossPlatform.Inc}
 unit Tarantool.ServerResponse;
 
 interface
@@ -33,11 +32,20 @@ function GetResponseClass(AGuid: TGUID): TTNTResponseClass;
 implementation
 
 uses
-  Tarantool.UserKeys, System.Generics.Collections;
+  Tarantool.UserKeys
+  {$IfDef FPC}
+  {$Else}
+  , System.Generics.Collections
+  {$EndIf}
+  ;
 
 
 type
+{$IfDef FPC}
+  TResponseClassList =
+{$Else}
   TResponseClassList = class(TDictionary<TGUID,TTNTResponseClass>);
+{$EndIf}
 
 var
   FResponseClassList : TResponseClassList = nil;
