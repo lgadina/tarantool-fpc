@@ -13,6 +13,7 @@ uses Classes
  , Tarantool.SelectRequest
  , Tarantool.UpdateRequest
  , Tarantool.DeleteRequest
+ , Tarantool.Utils
  , Variants
  ;
 
