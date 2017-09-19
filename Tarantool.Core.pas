@@ -4,7 +4,7 @@ interface
 uses
    Tarantool.Interfaces;
 
-function NewConnection(AHost: String; APort: Word; APooled: Boolean; AMaxPoolSize: Integer = 10;
+function NewConnection(AHost: String; APort: Word; AMaxPoolSize: Integer = 10;
     AUseSSL: Boolean = False; AUsername: String = ''; APassword : String = ''): ITNTConnection;
 
 implementation
@@ -18,6 +18,7 @@ uses System.SysUtils
   , IdComponent
   , IdHashSHA
   , IdCoderMime
+  , Tarantool.Tuple
   , Tarantool.AuthenticationRequest
   , Tarantool.ServerResponse
   , Tarantool.Packer
@@ -26,6 +27,7 @@ uses System.SysUtils
   , Tarantool.ErrorResponse
   , Tarantool.SelectRequest
   , Tarantool.Space
+  , Tarantool.EvalRequest
   , Tarantool.CallRequest
   , Tarantool.SimpleMsgPack
   , Tarantool.Pool;
@@ -45,6 +47,7 @@ type
     FUserName: string;
     FIsReady: boolean;
     FVersion: String;
+    FFromPool: Boolean;
     function GetUserName: string;
     function GetHostName: string;
     function GetIsReady: boolean;
@@ -58,6 +61,8 @@ type
     procedure SetUserName(const Value: string);
     procedure SetUseSSL(const Value: Boolean);
     function GetTarantoolPacketLength(ABuf: TBytes): Integer;
+    function GetFromPool: boolean;
+    procedure SetFromPool(const Value: boolean);
 
   protected
     function IdBytes2Bytes(ABytes: TIdBytes): TBytes;
@@ -72,7 +77,7 @@ type
     function ReadFromTarantool(AResponceGuid: TGUID): ITNTResponce;
     procedure WriteToTarantool(ACommand: ITNTCommand);
   public
-    constructor Create; virtual;
+    constructor Create(AFromPool: Boolean = False); virtual;
     destructor Destroy; override;
     procedure Open;
     procedure Close;
@@ -84,7 +89,9 @@ type
     property UseSSL: Boolean read GetUseSSL write SetUseSSL;
     property IsReady: boolean read GetIsReady;
     property Version: String read GetVersion;
+    property FromPool: boolean read GetFromPool write SetFromPool;
     function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
+    function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
   public
 
   end;
@@ -124,13 +131,14 @@ begin
   FTcpClient.Socket.OnStatus := SocketOnStatus;
 end;
 
-constructor TTNTConnection.Create;
+constructor TTNTConnection.Create(AFromPool: Boolean = False);
 begin
   FTCPClient := nil;
   FSSLIOHandler := nil;
   FIsReady := False;
   FVersion := '';
   FRequestId := 1;
+  FFromPool := AFromPool;
 end;
 
 function TTNTConnection.CreateScramble(ASalt: RawByteString): TIdBytes;
@@ -175,6 +183,15 @@ begin
   inherited;
 end;
 
+function TTNTConnection.Eval(AExpression: string;
+  AArguments: Variant): ITNTTuple;
+var EvalCmd : ITNTEval;
+begin
+  EvalCmd := NewEval(AExpression, AArguments);
+  WriteToTarantool(EvalCmd);
+  Result := ReadFromTarantool(ITNTTuple) as ITNTTuple;
+end;
+
 function TTNTConnection.FindSpaceByName(ASpaceName: string): IUnknown;
 var Select: ITNTSelect;
 begin
@@ -186,6 +203,11 @@ end;
 function TTNTConnection.GetUserName: string;
 begin
  Result := FUserName;
+end;
+
+function TTNTConnection.GetFromPool: boolean;
+begin
+ Result := FFromPool;
 end;
 
 function TTNTConnection.GetHostName: string;
@@ -314,6 +336,11 @@ begin
    Result := FClass.Create(Packer, Self);
 end;
 
+procedure TTNTConnection.SetFromPool(const Value: boolean);
+begin
+ FFromPool := Value;
+end;
+
 procedure TTNTConnection.SetHostName(const Value: string);
 begin
  FHostName := Value;
@@ -389,33 +416,15 @@ end;
 
 
 
-function NewConnection(AHost: String; APort: Word; APooled: Boolean; AMaxPoolSize: Integer = 10; AUseSSL: Boolean = False;
+function NewConnection(AHost: String; APort: Word; AMaxPoolSize: Integer = 10; AUseSSL: Boolean = False;
    AUsername: String = ''; APassword : String = ''): ITNTConnection;
-var Conn: ITNTConnection;
 begin
- if APooled then
-  begin
-    if IsPoolExist then
-     Result := TNTConnectionPool().Get
-    else
-    begin
-      Conn := TTNTConnection.Create;
-      Conn.HostName := AHost;
-      Conn.Port := APort;
-      Conn.UserName := AUsername;
-      Conn.UseSSL := AUseSSL;
-      Conn.Password := APassword;
-      Result := TNTConnectionPool(AMaxPoolSize, Conn).Get;
-    end;
-  end else
-  begin
-    Result := TTNTConnection.Create;
-    Result.HostName := AHost;
-    Result.Port := APort;
-    Result.UserName := AUsername;
-    Result.UseSSL := AUseSSL;
-    Result.Password := APassword;
-  end;
+ Result := TTNTConnection.Create;
+ Result.HostName := AHost;
+ Result.Port := APort;
+ Result.UserName := AUsername;
+ Result.UseSSL := AUseSSL;
+ Result.Password := APassword;
 end;
 
 end.

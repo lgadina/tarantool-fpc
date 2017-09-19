@@ -5,6 +5,7 @@ interface
 {$SCOPEDENUMS ON}
 type
   TTarantoolIterator = (
+        None         = -1,
         Eq           = 0,
         Req          = 1,
         All          = 2,

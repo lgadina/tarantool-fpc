@@ -15,7 +15,6 @@ type
   TTNTVariantDynArray = array of variant;
   TTNTIntegerDynArray = array of integer;
 
-  /// this type is used to store BLOB content
   TTNTByteDynArray = array of byte;
   PTNTByteDynArray = ^TTNTByteDynArray;
 
@@ -30,30 +29,20 @@ type
   RawByteString = AnsiString;
   {$endif}
 
-  // this type will store UTF-8 encoded buffer (also on NextGen platform)
   {$ifdef NEXTGEN}
   TUTF8Buffer = TBytes;
-  // TObjecTList is not defined in Mobile platforms
   TObjectList = TObjectList<TObject>;
   {$else}
   TUTF8Buffer = UTF8String;
   {$endif}
 
-  /// exception used during standand-alone cross-platform JSON process
   ETNTVariantException = class(Exception);
 
-  /// which kind of document the TJSONVariantData contains
   TTNTVariantKind = (tvkUndefined, tvkObject, tvkArray);
 
   PTNTVariantData = ^TTNTVariantData;
 
   {$A-}
-  /// stores any JSON object or array as variant
-  // - this structure is not very optimized for speed or memory use, but is
-  // simple and strong enough for our client-side purpose
-  // - it is in fact already faster (and using less memory) than DBXJSON and
-  // SuperObject / XSuperObject libraries - of course, mORMot's TDocVariant
-  // is faster, as dwsJSON is in some cases, but those are not cross-platform
   {$ifdef USEOBJECTINSTEADOFRECORD}
   TTNTVariantData = object
   protected
@@ -74,78 +63,35 @@ type
     function GetItem(aIndex: integer): variant;
     procedure SetItem(aIndex: integer; const aItem: variant);
   public
-    /// names of this jvObject
     Names: TTNTStringDynArray;
-    /// values of this jvObject or jvArray
     Values: TTNTVariantDynArray;
-
-    /// initialize the low-level memory structure
-    // - you should call Clear before calling overloaded Init several times
     procedure Init; overload;
     procedure InitFrom(const AMsgPack: TTNTMsgPack); overload;
     procedure InitFrom(const APacker: ITNTPackerArray); overload;
+    procedure InitFrom(const APacker: ITNTPackerMap); overload;
     function ToMsgPack: TTNTMsgPack;
     procedure PackToMessage(const APacker: ITNTPackerArray);
-    /// initialize the low-level memory structure with a given array of variant
-    // - you should call Clear before calling overloaded Init several times
     procedure InitFrom(const aValues: TTNTVariantDynArray); overload;
-    /// delete all internal stored data
-    // - basically the same as Finalize(aJsonVariantData) + aJsonVariantData.Init
-    // - you should call this method before calling overloaded Init several times
     procedure Clear;
-    /// access to a nested TJSONVariantData item
-    // - returns nil if aName was not found, or not a true TJSONVariantData item
     function Data(const aName: string): PTNTVariantData;
       {$ifdef HASINLINE}inline;{$endif}
-    /// access to a nested TJSONVariantData item, creating it if necessary
-    // - aPath can be specified with any depth, e.g. 'level1.level2.level3' 
-    // - if the item does not exist or is not a true TJSONVariantData, a new
-    // one will be created, and returned as pointer
     function EnsureData(const aPath: string): PTNTVariantData;
-    /// add a void TJSONVariantData to the jvArray and return a pointer to it
     function AddItem: PTNTVariantData;
-    /// add a value to the jvArray
-    // - raise a ESJONException if the instance is a jvObject
     procedure AddValue(const aValue: variant);
     function AddTNTVariant: Variant;
     function AddNamedTNTValue(const aName: String; const aValue: Variant): variant;
-    /// add a name/value pair to the jvObject
-    // - raise a ESJONException if the instance is a jvArray
     procedure AddNameValue(const aName: string; const aValue: variant);
-    /// search for a name in this jvObject
     function NameIndex(const aName: string): integer;
-    /// set a value of this jvObject to a given path
-    // - aPath can be specified with any depth, e.g. 'level1.level2.level3' 
     procedure SetPath(const aPath: string; const aValue: variant);
-    /// kind of document this TJSONVariantData contains
-    // - returns jvUndefined if this instance is not a TJSONVariant custom variant
     property Kind: TTNTVariantKind read GetKind;
-    /// number of items in this jvObject or jvArray
-    // - returns 0 if this instance is not a TJSONVariant custom variant
     property Count: integer read GetCount;
-    /// access by name to a value of this jvObject
-    // - value is returned as (varVariant or varByRef) for best speed
-    // - will return UnAssigned if aName is not correct or this is not a jvObject
     property Value[const aName: string]: variant read GetValue write SetValue; default;
-    /// access by name to a value of this jvObject
-    // - value is returned as a true copy (not varByRef) so this property is
-    // slower but safer than Value[], if the owning TJsonVariantData disappears
-    // - will return UnAssigned if aName is not correct or this is not a jvObject
     property ValueCopy[const aName: string]: variant read GetValueCopy;
-    /// access by index to a value of this jvArray
-    // - will return UnAssigned if aIndex is not correct or this is not a jvArray
     property Item[aIndex: integer]: variant read GetItem write SetItem;
-
     function ToObject(Instance: TObject): boolean;
   end;
   {$A+}
 
-  /// low-level class used to register TJSONVariantData as custom type
-  // - allows late binding to values, e.g.
-  // ! jsonvar.avalue := jsonvar.avalue+1;
-  // - due to an issue with FPC implementation, you can only read properties,
-  // not set them, so you should write:
-  // ! TJSONVariantData(jsonvar)['avalue'] := jsonvar.avalue+1;
   TTNTVariant = class(TInvokeableVariantType)
   protected
     {$ifndef FPC}
@@ -172,12 +118,13 @@ type
   end;
 
 var
-  /// the custom variant type definition registered for TJSONVariant
   TNTVariantType: TInvokeableVariantType;
 
 function TNTVariant: Variant; overload;
 function TNTVariant(const MsgPack: TTNTMsgPack): Variant; overload;
 function TNTVariant(const AObject: TObject): Variant; overload;
+function TNTVariant(const AArray: ITNTPackerArray): Variant; overload;
+function TNTVariant(const AMap: ITNTPackerMap): Variant; overload;
 function TNTVariantData(const TNTVariant: Variant): PTNTVariantData;
 function TNTObject(const TNTVariant: Variant; AClass: TClass): TObject;
 function TNTVariantDataSafe(const TNTVariant: variant;
@@ -199,12 +146,10 @@ type
     kNone, kNull, kFalse, kTrue, kString, kInteger, kFloat, kObject, kArray);
 
 
-{ TJSONVariantData }
-
 procedure TTNTVariantData.Init;
 begin
   VType := TNTVariantType.VarType;
-  {$ifdef UNICODE} // makes compiler happy
+  {$ifdef UNICODE}
   _Align := 0;
   {$endif}
   VKind := tvkUndefined;
@@ -214,7 +159,8 @@ begin
 end;
 
 
- function ParseArray(AMsgPack: TTNTMsgPack): TTNTVariantData; forward;
+
+function ParseArray(AMsgPack: TTNTMsgPack): TTNTVariantData; forward;
 
  function ParseMap(AMsgPack: TTNTMsgPack): TTNTVariantData;
  var i: Integer;
@@ -255,11 +201,10 @@ end;
  end;
 
 
+
+
 procedure TTNTVariantData.InitFrom(const AMsgPack: TTNTMsgPack);
-
 var V: Variant;
-
-
 begin
  Init;
  case AMsgPack.DataType of
@@ -338,6 +283,12 @@ begin
      mptBoolean: AddValue(APacker.UnpackBoolean(i));
    end;
 end;
+
+procedure TTNTVariantData.InitFrom(const APacker: ITNTPackerMap);
+begin
+ Self := ParseIMap(APacker);
+end;
+
 
 procedure TTNTVariantData.Clear;
 begin
@@ -485,18 +436,18 @@ end;
 function TTNTVariantData.EnsureData(const aPath: string): PTNTVariantData;
 var i: integer;
     new: TTNTVariantData;
-begin // recursive value set
+begin
   i := Pos('.',aPath);
   if i=0 then begin
     i := NameIndex(aPath);
-    if i<0 then begin // not existing: create new
+    if i<0 then begin
       new.Init;
       AddNameValue(aPath,variant(new));
       result := @Values[VCount-1];
     end else begin
       if TVarData(Values[i]).VType<>TNTVariantType.VarType then begin
         VarClear(Values[i]);
-        TTNTVariantData(Values[i]).Init; // create as TJSONVariantData
+        TTNTVariantData(Values[i]).Init;
       end;
       result := @Values[i];
     end;
@@ -612,8 +563,6 @@ begin
           tkString: PShortString(AData)^ := v;
           tkLString: PAnsiString(AData)^ := v;
           tkUString: PUnicodeString(AData)^ := v;
-//          tkChar: PChar(AData)^ := Char(v);
-//          tkWChar: PWideChar(AData)^ := v;
           tkInt64: PInt64(AData)^ := v;
           tkEnumeration: PByte(AData)^ := GetEnumValue(AInfo, v);
         end;
@@ -762,7 +711,6 @@ procedure TTNTVariant.CastTo(var Dest: TVarData; const Source: TVarData;
 begin
   if Source.VType<>VarType then
     RaiseCastError;
-//  variant(Dest) := TTNTVariantData(Source).ToJSON;
 end;
 
 procedure TTNTVariant.Clear(var V: TVarData);
@@ -810,9 +758,7 @@ function TTNTVariant.SetProperty(const V: TVarData; const Name: string;
 begin
   {$ifdef FPC}
   {$ifndef FPC_VARIANTSETVAR} 
-  raise EJSONException.Create('Setting TJSONVariant via late-binding does not'+
-    ' work with FPC - see http://mantis.freepascal.org/view.php?id=26773 -'+
-    ' use latest SVN or JSONVariantDataSafe(jsonvar)^[''prop''] := ... instead');
+  raise ETNTVariantExceptionException.Create('Not worked in FPC!');
   {$endif}
   {$endif}
   TTNTVariantData(V).SetValue(Name,variant(Value));
@@ -830,6 +776,17 @@ function TNTVariant(const MsgPack: TTNTMsgPack): Variant; overload;
 begin
   TTNTVariantData(Result).InitFrom(MsgPack);
 end;
+
+function TNTVariant(const AArray: ITNTPackerArray): Variant; overload;
+begin
+  TTNTVariantData(Result).InitFrom(AArray);
+end;
+
+function TNTVariant(const AMap: ITNTPackerMap): Variant; overload;
+begin
+  TTNTVariantData(Result).InitFrom(AMap);
+end;
+
 
 function TNTVariantData(const TNTVariant: Variant): PTNTVariantData;
 begin
@@ -885,7 +842,6 @@ begin
          if Info.Kind = tkClass then
          begin
            Arr^.AddValue(TNTVariant(TObject(P^)));
-           //AddArrayChild.OO[I] := ObjectToMsgPack(TObject(P^));
            P := Pointer( NativeUInt(P) + SizeOf(Pointer));
            Continue
          end
@@ -1047,6 +1003,11 @@ end;
 function TNTObject(const TNTVariant: Variant; AClass: TClass): TObject;
 begin
   Result := nil;
+  if AClass.InheritsFrom(TRemotableXS) then
+   begin
+     Result := AClass.Create;
+     TRemotableXS(Result).XSToNative(TNTVariant);
+   end else
   if VarType(TNTVariant) = TNTVariantType.VarType then
    begin
      Result := AClass.Create;

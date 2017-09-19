@@ -4,8 +4,7 @@ interface
 uses Tarantool.Interfaces;
 
 
-function TNTConnectionPool(AMaxPoolSize: Integer = 10; AMainConnection: ITNTConnection = nil): ITNTConnectionPool;
-function IsPoolExist: Boolean;
+function TNTConnectionPool(AMaxPoolSize: Integer; AHost: string; APort: Word; AUserName, APassword: string): ITNTConnectionPool; overload;
 
 implementation
 
@@ -23,7 +22,9 @@ type
   private
    FMaxPoolSize: Integer;
    FAllocatedConnection, FTakenConnection: Integer;
-   FMainConnection: ITNTConnection;
+   FUsername, FPassword: String;
+   FHost: String;
+   FPort: Word;
    FConnList: TTarantoolConnectionList;
    FLockPooled, FLockTaked: TCriticalSection;
    FBusy: TEvent;
@@ -31,7 +32,7 @@ type
     function CreateNewConnection: ITNTConnection;
     procedure ReserveConnection;
   public
-    constructor Create(AMaxPoolSize: Integer; AMainConnection: ITNTConnection);
+    constructor Create(AMaxPoolSize: Integer; AHost: String; APort: Word; AUsername, APassword: String);
     destructor Destroy; override;
     function Get: ITNTConnection;
     procedure Put(AConnection: ITNTConnection);
@@ -39,11 +40,14 @@ type
 
 { TTarantoolPool }
 
-constructor TTarantoolPool.Create(AMaxPoolSize: Integer;
-  AMainConnection: ITNTConnection);
+constructor TTarantoolPool.Create(AMaxPoolSize: Integer; AHost: String;
+ APort: Word; AUsername, APassword: String);
 begin
  FMaxPoolSize := AMaxPoolSize;
- FMainConnection := AMainConnection;
+ FUsername := AUsername;
+ FHost := AHost;
+ FPassword := APassword;
+ FPort := APort;
  FAllocatedConnection := 0;
  FTakenConnection := 0;
  FConnList := TTarantoolConnectionList.Create(AMaxPoolSize, INFINITE, 10);
@@ -54,9 +58,10 @@ end;
 
 function TTarantoolPool.CreateNewConnection: ITNTConnection;
 begin
- Result := NewConnection(FMainConnection.HostName, FMainConnection.Port, False);
- Result.UserName := FMainConnection.UserName;
- Result.Password := FMainConnection.Password;
+ Result := NewConnection(FHost, FPort);
+ Result.UserName := FUserName;
+ Result.Password := FPassword;
+ Result.FromPool := True;
  Result.Open;
  Inc(FAllocatedConnection);
 end;
@@ -107,13 +112,16 @@ procedure TTarantoolPool.Put(AConnection: ITNTConnection);
 begin
  FLockPooled.Enter;
  try
-   FConnList.PushItem(AConnection);
-   FLockTaked.Enter;
-   try
-    Dec(FTakenConnection);
-    FBusy.SetEvent;
-   finally
-     FLockTaked.Leave;
+   if AConnection.FromPool then
+   begin
+     FConnList.PushItem(AConnection);
+     FLockTaked.Enter;
+     try
+      Dec(FTakenConnection);
+      FBusy.SetEvent;
+     finally
+       FLockTaked.Leave;
+     end;
    end;
  finally
    FLockPooled.Leave;
@@ -127,30 +135,14 @@ begin
   FBusy.ResetEvent;
 end;
 
-var
-  FTNTConnectionPool : ITNTConnectionPool = nil;
 
-function TNTConnectionPool(AMaxPoolSize: Integer = 10; AMainConnection: ITNTConnection = nil): ITNTConnectionPool;
+function TNTConnectionPool(AMaxPoolSize: Integer; AHost: string; APort: Word; AUserName, APassword: string): ITNTConnectionPool; overload;
 begin
- Result := nil;
- if FTNTConnectionPool = nil then
-  begin
-    if AMainConnection = nil then
-     raise ETarantoolException.Create('Невозможно создать пул соединений без указания основного соединения');
-    FTNTConnectionPool := TTarantoolPool.Create(AMaxPoolSize, AMainConnection);
-  end;
-  Result := FTNTConnectionPool;
-end;
-
-function IsPoolExist: Boolean;
-begin
-  Result := FTNTConnectionPool <> nil;
+ Result := TTarantoolPool.Create(AMaxPoolSize, AHost, APort, AUserName, APassword);
 end;
 
 initialization
- FTNTConnectionPool := nil;
 
 finalization
- FTNTConnectionPool := nil;
 
 end.

@@ -104,6 +104,8 @@ type
     procedure SetPort(const Value: integer);
     procedure SetUserName(const Value: string);
     procedure SetUseSSL(const Value: Boolean);
+    function GetFromPool: boolean;
+    procedure SetFromPool(const Value: boolean);
 
     function ReadFromTarantool(AResponseGuid: TGUID): ITNTResponce;
     procedure WriteToTarantool(ACommand: ITNTCommand);
@@ -118,7 +120,9 @@ type
     property UseSSL: Boolean read GetUseSSL write SetUseSSL;
     property IsReady: boolean read GetIsReady;
     property Version: String read GetVersion;
+    property FromPool: boolean read GetFromPool write SetFromPool;
     function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
+    function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
   end;
 
   ITNTConnectionPool = interface
@@ -168,6 +172,61 @@ type
 
     property Code: integer read GetCode;
     property RequestId: Int64 read GetRequestId;
+  end;
+
+  ITNTPart = interface
+    ['{6C6226C0-F701-4CDA-BABC-37344D946DC4}']
+    function GetId: Int64;
+    function GetName: String;
+    function GetType: String;
+    procedure SetName(const Value: String);
+
+    property Id: Int64 read GetId;
+    property Name: String read GetName write SetName;
+    property &Type: String read GetType;
+  end;
+
+  ITNTParts = interface
+    ['{6C5AE5B8-5711-4013-96D3-976EBD24AE51}']
+    function GetPart(Index: Integer): ITNTPart;
+    property Part[Index: Integer]: ITNTPart read GetPart; default;
+
+    function GetCount: Integer;
+    property Count: Integer read GetCount;
+  end;
+
+  ITNTIndex = interface(ITNTResponce)
+    ['{CB7C7CC1-9413-40AF-BF77-EE8745D3F9A3}']
+    function GetSpaceId: Int64;
+    function GetIId: Int64;
+    function GetName: String;
+    function GetOpts: Variant;
+    function GetType: String;
+    function GetParts: ITNTParts;
+
+    property SpaceId: Int64 read GetSpaceId;
+    property IId: Int64 read GetIId;
+    property Name: String read GetName;
+    property &Type: String read GetType;
+    property Opts: Variant read GetOpts;
+    property Parts: ITNTParts read GetParts;
+
+    function Select(AKeys: Variant; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
+    function Select(AKeys: Variant; ALimit: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
+    function Select(AKeys: Variant; ALimit: Integer; AOffset: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
+    function SelectAll: ITNTTuple;
+
+  end;
+
+  ITNTIndexList = interface(ITNTResponce)
+    ['{80318FE8-EAB2-4604-B1E5-D5ECAFF3E70A}']
+    function GetIndex(AIndex: Integer): ITNTIndex;
+    function GetNameIndex(AName: String): ITNTIndex;
+    property Index[AIndex: Integer]: ITNTIndex read GetIndex; default;
+    property NameIndex[AName: String]: ITNTIndex read GetNameIndex;
+    function GetCount: Integer;
+    property Count: Integer read GetCount;
+
   end;
 
   ITNTInsert = interface(ITNTClientMessage)
@@ -234,9 +293,14 @@ type
     function GetName: string;
     function GetOwnerId: Int64;
     function GetSpaceId: Int64;
+    function GetIndexes: ITNTIndexList;
+
     function Select(AIndexId: Integer; AKeys: Variant; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
     function Select(AIndexId: Integer; AKeys: Variant; ALimit: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
     function Select(AIndexId: Integer; AKeys: Variant; ALimit: Integer; AOffset: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
+    function SelectAll: ITNTTuple;
+
+    property Indexes: ITNTIndexList read GetIndexes;
 
     property SpaceId: Int64 read GetSpaceId write SetSpaceId;
     property OwnerId: Int64 read GetOwnerId write SetOwnerId;
@@ -252,6 +316,7 @@ type
     function Upsert(AValues: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
     procedure Delete(AIndex: Int64; AKeys: Variant);
     function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
+    function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
   end;
 
   ITNTUpdateDefinition = interface
@@ -293,6 +358,11 @@ type
     property Arguments: Variant read GetArguments write SetArguments;
   end;
 
+
+
+  ITNTEval = interface(ITNTCall)
+    ['{10D47A80-08ED-4ED2-9974-885BDADE2AD6}']
+  end;
 
 implementation
 

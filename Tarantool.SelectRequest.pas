@@ -102,26 +102,29 @@ begin
    begin
      Pack(tnSpaceId, FSpaceId);
      if FIndexId > -1 then
-      Pack(tnIndexId, FIndexId);
+       Pack(tnIndexId, FIndexId);
      Pack(tnLimit, FLimit);
      Pack(tnOffset, FOffset);
      Pack(tnIterator, Ord(FIterator));
      Arr := PackArray(tnKey);
-     if (VarType(FKeys) and varArray) <> 0 then
+     if not VarIsNull(FKeys) then
      begin
-       for i := VarArrayLowBound(FKeys, 1) to VarArrayHighBound(FKeys, 1) do
-        begin
-          s := FKeys[i];
-          if VarType(s) = TNTVariantType.VarType then
-           TNTVariantData(s).PackToMessage(Arr.PackArray)
-          else
-          Arr.Pack(s);
-        end;
-     end else
-     if (VarType(FKeys) = TNTVariantType.VarType) then
-       TNTVariantData(FKeys).PackToMessage(Arr.PackArray)
-     else
-       Arr.Pack(FKeys)
+      if (VarType(FKeys) and varArray) <> 0 then
+       begin
+         for i := VarArrayLowBound(FKeys, 1) to VarArrayHighBound(FKeys, 1) do
+          begin
+            s := FKeys[i];
+            if VarType(s) = TNTVariantType.VarType then
+             TNTVariantData(s).PackToMessage(Arr.PackArray)
+            else
+            Arr.Pack(s);
+          end;
+       end else
+       if (VarType(FKeys) = TNTVariantType.VarType) then
+         TNTVariantData(FKeys).PackToMessage(Arr.PackArray)
+       else
+         Arr.Pack(FKeys)
+     end;
    end;
 end;
 
