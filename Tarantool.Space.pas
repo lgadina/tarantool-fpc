@@ -43,17 +43,6 @@ type
     function GetSpaceId: Int64;
     function GetIndexes: ITNTIndexList;
   protected
-    type
-      TTNTField = class
-      private
-        FName: String;
-        FFieldType: TTNTFieldType;
-      public
-        property Name: String read FName;
-        property FieldType: TTNTFieldType read FFieldType;
-      end;
-  protected
-
   public
     constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection); override;
     property SpaceId: Int64 read GetSpaceId write SetSpaceId;
@@ -106,20 +95,7 @@ begin
    FEngine := UnpackString(3);
    FFieldCount := UnpackInteger(4);
    Maps := UnpackMap(5);
-   if Maps.Count > 0 then
-    begin
-
-    end;
    Flds := UnpackArray(6);
-   if Flds.Count > 0 then
-    begin
-     for i := 0 to Flds.Count - 1 do
-       begin
-         Maps := Flds.UnpackMap(i);
-         Maps.UnpackString('name');
-         Maps.UnpackString('type');
-       end;
-    end;
   end;
   LSelect := SelectRequest(VIndexSpaceId, VIndexIdIndexId, FSpaceId);
   Connection.WriteToTarantool(LSelect);
