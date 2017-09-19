@@ -5,7 +5,7 @@ uses Tarantool.Interfaces;
 
 
 implementation
-uses System.Classes
+uses Classes
  , Tarantool.UserKeys
  , Tarantool.ServerResponse
  , Tarantool.Variants

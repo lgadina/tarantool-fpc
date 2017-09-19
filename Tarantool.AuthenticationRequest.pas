@@ -3,7 +3,14 @@ unit Tarantool.AuthenticationRequest;
 interface
 
 uses
-  System.SysUtils, Tarantool.ClientMessage, Tarantool.Interfaces, IdGlobal;
+{$IfDef FPC}
+   sysutils
+{$Else}
+   System.SysUtils
+{$EndIf}
+  , Tarantool.ClientMessage
+  , Tarantool.Interfaces
+  , IdGlobal;
 
 type
   ITNTAuthenticationRequest = interface(ITNTCommand)

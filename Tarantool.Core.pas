@@ -1,5 +1,5 @@
 unit Tarantool.Core;
-
+{$I Tarantool.Options.inc}
 interface
 uses
    Tarantool.Interfaces;
@@ -37,7 +37,9 @@ uses
   , Tarantool.EvalRequest
   , Tarantool.CallRequest
   , Tarantool.SimpleMsgPack
-  , Tarantool.Pool;
+  , Tarantool.Pool
+  , Tarantool.Utils
+;
 
 
 type
@@ -46,7 +48,9 @@ type
   private
     FRequestId: Int64;
     FTCPClient: TIdTCPClient;
+    {$IfNDef FPC}
     FSSLIOHandler: TIdSSLIOHandlerSocketOpenSSL;
+    {$EndIf}
     FPort: integer;
     FUseSSL: Boolean;
     FHostName: string;
@@ -127,8 +131,10 @@ begin
     FTCPClient.Disconnect;
     FVersion := '';
     FreeAndNil(FTCPClient);
+   {$IfNDef FPC}
     if Assigned(FSSLIOHandler) then
      FreeAndNil(FSSLIOHandler);
+   {$EndIf}
   end;
 end;
 
@@ -141,7 +147,9 @@ end;
 constructor TTNTConnection.Create(AFromPool: Boolean = False);
 begin
   FTCPClient := nil;
+ {$IfNDef FPC}
   FSSLIOHandler := nil;
+ {$EndIf}
   FIsReady := False;
   FVersion := '';
   FRequestId := 1;
@@ -185,8 +193,10 @@ destructor TTNTConnection.Destroy;
 begin
   if Assigned(FTCPClient) then
    FreeAndNil(FTCPClient);
+ {$IfNDef FPC}
   if Assigned(FSSLIOHandler) then
    FreeAndNil(FSSLIOHandler);
+ {$EndIf}
   inherited;
 end;
 
@@ -279,11 +289,13 @@ begin
       if not Assigned(FTCPClient) then
        begin
          FTCPClient := TIdTCPClient.Create(nil);
+         {$IfNDef FPC}
          if UseSSL then
           begin
             FSSLIOHandler := TIdSSLIOHandlerSocketOpenSSL.Create();
             FTCPClient.IOHandler := FSSLIOHandler;
           end;
+         {$EndIf}
           FTCPClient.OnSocketAllocated := ConnectionOnSocketAllocated;
           FTCPClient.OnStatus := SocketOnStatus;
        end;

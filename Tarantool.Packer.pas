@@ -1,10 +1,19 @@
-{$I Tarantool.Options.Inc}
+{$I Tarantool.Options.inc}
 
 unit Tarantool.Packer;
 
 interface
 
-uses Tarantool.Interfaces, IdGlobal, Tarantool.SimpleMsgPack, System.SysUtils;
+uses
+  Tarantool.Interfaces
+  , IdGlobal
+  , Tarantool.SimpleMsgPack
+{$IfDef FPC}
+  , sysutils
+{$Else}
+  , System.SysUtils
+{$EndIf}
+  ;
 
 type
   TTNTPacker = class(TInterfacedObject, ITNTPacker)
@@ -98,7 +107,11 @@ type
 
 implementation
 
-uses System.Classes
+uses {$IfDef FPC}
+  Classes
+{$Else}
+  System.Classes
+{$EndIf}
   , Tarantool.UserKeys
   , Tarantool.Variants
   , Variants;
@@ -556,7 +569,7 @@ function TTNTPackArray.Pack(const AValue: Variant): ITNTPackerArray;
 begin
   if VarType(AValue) = TNTVariantType.VarType then
    begin
-     TNTVariantData(AValue).PackToMessage(PackArray);
+     TNTVariantData(AValue)^.PackToMessage(PackArray);
    end else
     FObj.AddArrayChild.AsVariant := AValue;
   Result := Self;

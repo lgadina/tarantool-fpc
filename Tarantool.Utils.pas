@@ -1,8 +1,21 @@
 unit Tarantool.Utils;
 
+{$IFDEF FPC}
+        {$MODESWITCH ADVANCEDRECORDS}
+        {$MODESWITCH TYPEHELPERS}
+{$ENDIF}
+
+
 interface
 
-uses System.TypInfo;
+uses
+  {$IfDef FPC}
+   typinfo
+  {$Else}
+   System.TypInfo
+  {$EndIf}
+   , Sysutils
+  ;
 
 
 type
@@ -21,11 +34,28 @@ procedure GetDims(ArrP: Pointer; DimAr: TNativeIntDynArray; Dims: Integer);
 function GetDynArrayNextInfo2(typeInfo: PTypeInfo; var Name: string): PTypeInfo;
 function GetDynArrayNextInfo(typeInfo: PTypeInfo): PTypeInfo;
 
+{$IfDef FPC}
+type
+
+    { TGUIDHelperSub }
+
+    TGUIDHelperSub = record helper(TGuidHelper) for TGuid
+      class function Empty: TGUID; static;
+    end;
+{$EndIf}
+
 implementation
 uses
+{$IfDef FPC}
+  Classes,
+  Types
+{$Else}
   System.SysUtils,
   System.Classes,
-  System.Types;
+  System.Types
+{$EndIf}
+;
+
 
 
 procedure GetDynArrayElementTypeInfo(TypeInfo: PTypeInfo; var ElementInfo: PTypeInfo; var Dims: Integer);
@@ -48,7 +78,7 @@ begin
   begin
     CleanupInfo := True;
     Info := ppInfo^;
-    if Info.Kind = tkDynArray then
+    if Info^.Kind = tkDynArray then
     begin
       GetDynArrayElementTypeInfo(Info, ElementInfo, Dims);
     end;
@@ -62,7 +92,7 @@ begin
     if not CleanupInfo then
     begin
       Info := ElementInfo;
-      if Info.Kind = tkDynArray then
+      if Info^.Kind = tkDynArray then
         GetDynArrayElementTypeInfo(Info, ElementInfo, Dims);
     end;
   end;
@@ -219,5 +249,14 @@ begin
 end;
 
 
+{$IfDef FPC}
+{ TGUIDHelperSub }
+
+class function TGUIDHelperSub.Empty: TGUID;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+end;
+
+{$EndIf}
 
 end.

@@ -5,7 +5,7 @@ interface
 
 implementation
 
-uses System.SysUtils
+uses SysUtils
  , Tarantool.UserKeys
  , Tarantool.ServerResponse
  , Tarantool.Interfaces
@@ -16,7 +16,9 @@ uses System.SysUtils
  , Tarantool.UpdateRequest
  , Tarantool.DeleteRequest
  , Tarantool.UpsertRequest
- , Tarantool.Exceptions, Variants
+ , Tarantool.Exceptions
+ , Tarantool.Utils
+ , Variants
  ;
 
 type
@@ -93,7 +95,7 @@ constructor TTNTSpace.Create(APacker: ITNTPacker; AConnection: ITNTConnection);
 var Maps: ITNTPackerMap;
     Flds: ITNTPackerArray;
     i, j: Integer;
-    Select: ITNTSelect;
+    LSelect: ITNTSelect;
 begin
   inherited;
   With APacker.Body.UnpackArray(tnData).UnpackArray(0) do
@@ -119,8 +121,8 @@ begin
        end;
     end;
   end;
-  Select := SelectRequest(VIndexSpaceId, VIndexIdIndexId, FSpaceId);
-  Connection.WriteToTarantool(Select);
+  LSelect := SelectRequest(VIndexSpaceId, VIndexIdIndexId, FSpaceId);
+  Connection.WriteToTarantool(LSelect);
   FIndexList := Connection.ReadFromTarantool(ITNTIndexList) as ITNTIndexList;
   if Flds.Count > 0 then
     for i := 0 to FIndexList.Count - 1 do
@@ -134,6 +136,7 @@ var DeleteCmd: ITNTDelete;
 begin
  DeleteCmd := NewDelete(FSpaceId, AIndex, AKeys);
  Connection.WriteToTarantool(DeleteCmd);
+
  Connection.ReadFromTarantool(TGUID.Empty);
 end;
 

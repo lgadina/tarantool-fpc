@@ -8,13 +8,13 @@ function NewUpsert(ASpaceId: Integer; AValues: Variant; AUpdateDefinition: ITNTU
 
 implementation
 
-uses System.SysUtils
+uses SysUtils
  , Tarantool.UserKeys
  , Tarantool.ClientMessage
  , Tarantool.Variants
  , Tarantool.Exceptions
  , Tarantool.CommanCode
- , System.Variants;
+ , Variants;
 
 type
   TTNTUpsert = class(TTNTClientMessage, ITNTUpsert)

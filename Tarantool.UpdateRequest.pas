@@ -1,4 +1,5 @@
 unit Tarantool.UpdateRequest;
+{$I Tarantool.Options.inc}
 
 interface
 uses Tarantool.Interfaces;
@@ -9,7 +10,7 @@ function NewUpdate(ASpaceId, AIndexId: Int64; AKeys: Variant; AUpdateDef: ITNTUp
 implementation
 
 uses
-  System.Contnrs,
+  Contnrs,
   Tarantool.Variants,
   Tarantool.Exceptions,
   Tarantool.ClientMessage,

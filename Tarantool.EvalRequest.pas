@@ -11,7 +11,7 @@ uses Tarantool.ClientMessage
  , Tarantool.UserKeys
  , Tarantool.Variants
  , Tarantool.CommanCode
- , System.Variants;
+ , Variants;
 
 type
   TTNTEval = class(TTNTClientMessageBase, ITNTEval)

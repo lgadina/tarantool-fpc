@@ -34,6 +34,7 @@ implementation
 uses
   Tarantool.UserKeys
   {$IfDef FPC}
+  , generics.collections
   {$Else}
   , System.Generics.Collections
   {$EndIf}
@@ -42,7 +43,7 @@ uses
 
 type
 {$IfDef FPC}
-  TResponseClassList =
+  TResponseClassList = specialize TDictionary<TGUID, TTNTResponseClass>;
 {$Else}
   TResponseClassList = class(TDictionary<TGUID,TTNTResponseClass>);
 {$EndIf}

@@ -1,5 +1,7 @@
 unit Tarantool.Variants;
 
+{$I Tarantool.Options.inc}
+
 interface
 
 uses
@@ -137,8 +139,11 @@ implementation
 
 uses Tarantool.UserKeys
 , Tarantool.Utils
+{$IfNDef FPC}
 , Soap.InvokeRegistry
-, System.StrUtils;
+, System.StrUtils
+{$EndIf}
+;
 
 
 type
@@ -528,12 +533,12 @@ begin
    begin
     for i := 0 to ASize - 1 do
     begin
-     PTObject(AData)^ := TNTObject(TTNTVariantData(AValue).Item[i], GetTypeData(AInfo).ClassType);
+     PTObject(AData)^ := TNTObject(TTNTVariantData(AValue).Item[i], GetTypeData(AInfo)^.ClassType);
      AData := Pointer(NativeUInt(AData) + SizeOf(Pointer));
      Inc(CurElement);
     end;
    end else
-  if AInfo.Kind = tkVariant then
+  if AInfo^.Kind = tkVariant then
   begin
    for i := 0 to ASize - 1 do
    begin
@@ -546,7 +551,7 @@ begin
     for i := 0 to ASize - 1 do
       begin
         v := TTNTVariantData(AValue).Item[i];
-        case AInfo.Kind of
+        case AInfo^.Kind of
           tkInteger: case TypeData^.OrdType of
                       otSByte, otUByte:  PByte(AData)^ := v;
                       otSWord, otUWord: PSmallInt(AData)^ := v;
@@ -626,59 +631,65 @@ procedure SetInstanceProp(Instance: TObject; PropInfo: PPropInfo;
 var
     obj: TObject;
     ArrayPtr: Pointer;
+    PropType: PTypeInfo;
 begin
   if (PropInfo<>nil) and (Instance<>nil) then
-  case PropInfo^.PropType^.Kind of
-  tkInt64{$ifdef FPC}, tkQWord{$endif}:
-    if TVarData(Value).VType=varInt64 then
-      SetInt64Prop(Instance,PropInfo,TVarData(Value).VInt64) else
-      SetOrdProp(Instance,PropInfo,Value);
-  tkEnumeration: if PropInfo^.PropType^.Name = 'Boolean' then
-                    SetOrdProp(Instance, PropInfo, Ord(StrToBoolDef(VarToStr(Value), false)))
-                  else
-                    SetEnumProp(Instance, PropInfo, Value);
-  tkInteger, tkSet:
-    SetOrdProp(Instance,PropInfo,Value);
-  {$ifdef NEXTGEN}
-  tkUString:
-    if TVarData(Value).VType<=varNull then
-      SetStrProp(Instance,PropInfo,'') else
-      SetStrProp(Instance,PropInfo,Value);
-  {$else}
-  {$ifdef FPC}tkAString,{$endif} tkLString:
-    if TVarData(Value).VType<=varNull then
-      SetStrProp(Instance,PropInfo,'') else
-      SetStrProp(Instance,PropInfo,Value);
-  tkWString:
-    if TVarData(Value).VType<=varNull then
-      SetWideStrProp(Instance,PropInfo,'') else
-      SetWideStrProp(Instance,PropInfo,Value);
-  {$ifdef UNICODE}
-  tkUString:
-    if TVarData(Value).VType<=varNull then
-      SetUnicodeStrProp(Instance,PropInfo,'') else
-      SetUnicodeStrProp(Instance,PropInfo,Value);
-  {$endif UNICODE}
-  {$endif NEXTGEN}
-  tkFloat:
-      SetFloatProp(Instance,PropInfo,Value);
-  tkVariant:
-    SetVariantProp(Instance,PropInfo,Value);
-  tkDynArray: begin
-                ArrayPtr := nil;
-                ArrayPtr := ConvertVariantToNativeArray(@ArrayPtr, PropInfo^.PropType^, Value);
-                SetDynArrayProp(Instance, PropInfo, ArrayPtr);
-              end;
-  tkClass: begin
-    obj := GetObjectProp(Instance, PropInfo);
-    if TVarData(Value).VType>varNull then
-      if obj=nil then begin
-        obj := TNTObject(Value, GetTypeData(PropInfo^.PropType^).ClassType);
-        if obj<>nil then
-          SetOrdProp(Instance,PropInfo,NativeInt(obj));
-      end else
-        TNTVariantData(Value).ToObject(obj);
-  end;
+  begin
+    PropType := {$IfDef FPC}PropInfo^.PropType{$Else}PropInfo^.PropType^{$EndIf};
+
+      case PropInfo^.PropType^.Kind of
+      tkInt64{$ifdef FPC}, tkQWord{$endif}:
+        if TVarData(Value).VType=varInt64 then
+          SetInt64Prop(Instance,PropInfo,TVarData(Value).VInt64) else
+          SetOrdProp(Instance,PropInfo,Value);
+      tkEnumeration: if PropInfo^.PropType^.Name = 'Boolean' then
+                        SetOrdProp(Instance, PropInfo, Ord(StrToBoolDef(VarToStr(Value), false)))
+                      else
+                        SetEnumProp(Instance, PropInfo, Value);
+      tkInteger, tkSet:
+        SetOrdProp(Instance,PropInfo,Value);
+      {$ifdef NEXTGEN}
+      tkUString:
+        if TVarData(Value).VType<=varNull then
+          SetStrProp(Instance,PropInfo,'') else
+          SetStrProp(Instance,PropInfo,Value);
+      {$else}
+      {$ifdef FPC}tkAString,{$endif} tkLString:
+        if TVarData(Value).VType<=varNull then
+          SetStrProp(Instance,PropInfo,'') else
+          SetStrProp(Instance,PropInfo,Value);
+      tkWString:
+        if TVarData(Value).VType<=varNull then
+          SetWideStrProp(Instance,PropInfo,'') else
+          SetWideStrProp(Instance,PropInfo,Value);
+      {$ifdef UNICODE}
+      tkUString:
+        if TVarData(Value).VType<=varNull then
+          SetUnicodeStrProp(Instance,PropInfo,'') else
+          SetUnicodeStrProp(Instance,PropInfo,Value);
+      {$endif UNICODE}
+      {$endif NEXTGEN}
+      tkFloat:
+          SetFloatProp(Instance,PropInfo,Value);
+      tkVariant:
+        SetVariantProp(Instance,PropInfo,Value);
+      tkDynArray: begin
+                    ArrayPtr := nil;
+                    ArrayPtr := ConvertVariantToNativeArray(@ArrayPtr, PropType, Value);
+                    SetDynArrayProp(Instance, PropInfo, ArrayPtr);
+                  end;
+      tkClass: begin
+        obj := GetObjectProp(Instance, PropInfo);
+        if TVarData(Value).VType>varNull then
+          if obj=nil then begin
+            obj := TNTObject(Value, GetTypeData(PropType)^.ClassType);
+            if obj<>nil then
+              SetOrdProp(Instance,PropInfo,NativeInt(obj));
+          end else
+            TNTVariantData(Value)^.ToObject(obj);
+      end;
+
+      end;
 
   end;
 end;
@@ -749,7 +760,7 @@ begin
 end;
 
 {$ifdef FPC_VARIANTSETVAR}
-function TJSONVariant.SetProperty(var V: TVarData; const Name: string;
+function TTNTVariant.SetProperty(var V: TVarData; const Name: string;
   const Value: TVarData): Boolean;
 {$else}
 function TTNTVariant.SetProperty(const V: TVarData; const Name: string;
@@ -839,7 +850,7 @@ begin
    begin
      for i := 0 to Size - 1 do
        begin
-         if Info.Kind = tkClass then
+         if Info^.Kind = tkClass then
          begin
            Arr^.AddValue(TNTVariant(TObject(P^)));
            P := Pointer( NativeUInt(P) + SizeOf(Pointer));
@@ -847,12 +858,12 @@ begin
          end
          else
          case info^.Kind of
-          tkInteger: case TypeData.OrdType of
+          tkInteger: case TypeData^.OrdType of
                       otSByte, otUByte: Arr^.AddValue(Byte(P^));
                       otSWord, otUWord: Arr^.AddValue(SmallInt(P^));
                       otSLong, otULong: Arr^.AddValue(Integer(P^));
                      end;
-          tkFloat:   case TypeData.FloatType of
+          tkFloat:   case TypeData^.FloatType of
                       ftSingle: Arr^.AddValue(Single(P^));
                       ftDouble: Arr^.AddValue(Double(P^));
                      end;
@@ -865,7 +876,7 @@ begin
           tkUString: Arr^.AddValue(PUnicodeString(P)^);
          end;
 
-         P := Pointer( NativeUInt(P) + TypeData.elSize);
+         P := Pointer( NativeUInt(P) + TypeData^.elSize);
        end;
    end;
 
@@ -876,7 +887,7 @@ procedure WriteNonRectDynArray(Info: PTypeInfo; P: Pointer; Dim: Integer; Arr: P
 
 procedure WriteNonRectDynArrayElem(Info: PTypeInfo; P: Pointer; Dim: Integer; Arr: PTNTVariantData);
 begin
- if (Dim > 0)  or (Info.Kind = tkDynArray) then
+ if (Dim > 0)  or (Info^.Kind = tkDynArray) then
    WriteNonRectDynArray(Info, P, Dim, Arr)
  else
    WriteRectDynArrayElem(Info, 1, 1, P, Arr);
@@ -899,7 +910,7 @@ begin
 
   for i := 0 to Len - 1 do
   begin
-    if ElemInfo.Kind = tkDynArray then
+    if ElemInfo^.Kind = tkDynArray then
     begin
       PData := Pointer(P^);
       TTNTVariantData(L).Init;
@@ -914,10 +925,10 @@ begin
     end;
 
 
-    if ElemInfo.Kind = tkClass then
+    if ElemInfo^.Kind = tkClass then
       P := Pointer(NativeUInt(P) + SizeOf(Pointer))
     else
-      P := Pointer(NativeUInt(P) +  GetTypeData(ElemInfo).elSize);
+      P := Pointer(NativeUInt(P) +  GetTypeData(ElemInfo)^.elSize);
   end;
 
 end;
@@ -981,15 +992,17 @@ begin
               tkClass: Begin
                          Obj := GetObjectProp(AObject, PI);
                          if Assigned(Obj) then
+                         {$IfNDef FPC}
                           if Obj.InheritsFrom(TRemotableXS) then
                            TTNTVariantData(Result).AddNameValue(pi^.Name, TRemotableXS(Obj).NativeToXS)
                           else
+                         {$EndIf}
                            TTNTVariantData(Result).AddNameValue(pi^.Name, TNTVariant(Obj));
                        End;
               tkDynArray: begin
                             P := Pointer(GetDynArrayProp(AObject, PI));
                             if Assigned(P) then
-                              TTNTVariantData(Result).AddNameValue(pi^.Name, DynArrayToTNTVariant((PI^.PropType)^, P));
+                              TTNTVariantData(Result).AddNameValue(pi^.Name, DynArrayToTNTVariant(PI^.PropType{$IfNDef FPC}^{$EndIf}, P));
                           end;
             end;
           end;
@@ -1003,11 +1016,13 @@ end;
 function TNTObject(const TNTVariant: Variant; AClass: TClass): TObject;
 begin
   Result := nil;
+{$IfNDef FPC}
   if AClass.InheritsFrom(TRemotableXS) then
    begin
      Result := AClass.Create;
      TRemotableXS(Result).XSToNative(TNTVariant);
    end else
+{$EndIf}
   if VarType(TNTVariant) = TNTVariantType.VarType then
    begin
      Result := AClass.Create;

@@ -2,14 +2,16 @@ unit Tarantool.SelectRequest;
 
 interface
 
-uses System.Classes, Tarantool.Interfaces, Tarantool.Iterator;
+uses Classes
+  , Tarantool.Interfaces
+  , Tarantool.Iterator;
 
 
   function SelectRequest(ASpaceId, AIndexId: Int64; AKeys: Variant; AOffset: Int64 = 0;
      ALimit: Int64 = 0; AIterator : TTarantoolIterator = TTarantoolIterator.Eq): ITNTSelect;
 implementation
 
-uses System.SysUtils, Tarantool.ClientMessage, Tarantool.UserKeys, Tarantool.CommanCode, Variants, Tarantool.Variants;
+uses SysUtils, Tarantool.ClientMessage, Tarantool.UserKeys, Tarantool.CommanCode, Variants, Tarantool.Variants;
 
 type
   TTNTSelect = class(TTNTClientMessageBase, ITNTSelect)
@@ -115,13 +117,13 @@ begin
           begin
             s := FKeys[i];
             if VarType(s) = TNTVariantType.VarType then
-             TNTVariantData(s).PackToMessage(Arr.PackArray)
+             TNTVariantData(s)^.PackToMessage(Arr.PackArray)
             else
             Arr.Pack(s);
           end;
        end else
        if (VarType(FKeys) = TNTVariantType.VarType) then
-         TNTVariantData(FKeys).PackToMessage(Arr.PackArray)
+         TNTVariantData(FKeys)^.PackToMessage(Arr.PackArray)
        else
          Arr.Pack(FKeys)
      end;

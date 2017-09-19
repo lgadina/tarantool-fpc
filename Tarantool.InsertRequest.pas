@@ -1,7 +1,7 @@
 unit Tarantool.InsertRequest;
 
 interface
-uses System.SysUtils, System.Classes, Tarantool.Interfaces;
+uses SysUtils, Classes, Tarantool.Interfaces;
 
   function NewInsert(ASpaceId: Int64; AValues: TTNTInsertValues; ATuple: TBytes): ITNTInsert; overload;
   function NewInsert(ASpaceId: Int64; AValues: TTNTInsertValues): ITNTInsert; overload;
@@ -13,7 +13,7 @@ uses System.SysUtils, System.Classes, Tarantool.Interfaces;
 
 
 implementation
-uses Tarantool.ClientMessage, Tarantool.UserKeys, Tarantool.CommanCode, Tarantool.Variants, System.Variants;
+uses Tarantool.ClientMessage, Tarantool.UserKeys, Tarantool.CommanCode, Tarantool.Variants, Variants;
 
 type
   TTNTInsert = class(TTNTClientMessage, ITNTInsert, ITNTReplace)

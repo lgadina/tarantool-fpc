@@ -8,15 +8,23 @@ function TNTConnectionPool(AMaxPoolSize: Integer; AHost: string; APort: Word; AU
 
 implementation
 
-uses System.SysUtils
+uses SysUtils
+{$IfNDef FPC}
   , System.Generics.Collections
-  , System.SyncObjs
+{$Else}
+  , Generics.Collections
+{$EndIf}
+  , SyncObjs
   , Tarantool.Core
   , Tarantool.Exceptions
   ;
 
 type
+{$IfDef FPC}
+  TTarantoolConnectionList = specialize TQueue<ITNTConnection>;
+{$Else}
   TTarantoolConnectionList = TThreadedQueue<ITNTConnection>;
+{$EndIf}
 
   TTarantoolPool = class(TInterfacedObject, ITNTConnectionPool)
   private
@@ -50,7 +58,7 @@ begin
  FPort := APort;
  FAllocatedConnection := 0;
  FTakenConnection := 0;
- FConnList := TTarantoolConnectionList.Create(AMaxPoolSize, INFINITE, 10);
+ FConnList := TTarantoolConnectionList.Create{$IfNDef FPC}(AMaxPoolSize, INFINITE, 10){$EndIf};
  FLockTaked := TCriticalSection.Create;
  FLockPooled := TCriticalSection.Create;
  FBusy :=TEvent.Create(nil, True, True, '');
@@ -71,7 +79,11 @@ begin
   FreeAndNil(FLockPooled);
   FreeAndNil(FLockTaked);
   FreeAndNil(FBusy);
+{$IfDef FPC}
+  while FConnList.Dequeue <> nil do ;
+{$Else}
   while FConnList.PopItem <> nil do ;
+{$EndIf}
   FreeAndNil(FConnList);
   inherited;
 end;
@@ -100,7 +112,12 @@ begin
 
  FLockPooled.Enter;
  try
+  {$IfDef FPC}
+  Result := FConnList.Dequeue;
+  if Result <> nil then
+  {$Else}
   if FConnList.PopItem(Result) = wrTimeout then
+  {$EndIf}
    if FAllocatedConnection < FMaxPoolSize then
     Result := CreateNewConnection;
  finally
@@ -114,7 +131,11 @@ begin
  try
    if AConnection.FromPool then
    begin
+     {$IfDef FPC}
+     FConnList.Enqueue(AConnection);
+     {$Else}
      FConnList.PushItem(AConnection);
+     {$EndIf}
      FLockTaked.Enter;
      try
       Dec(FTakenConnection);

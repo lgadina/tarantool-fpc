@@ -1,7 +1,7 @@
 unit Tarantool.Exceptions;
 
 interface
-uses System.SysUtils;
+uses SysUtils;
 
 type
   ETarantoolException = class(Exception);
