@@ -97,7 +97,7 @@ const
 {$ENDIF}
 begin
  if FBusy.WaitFor(Timeout) = wrTimeout then
-  raise Exception.Create('Превышно количство соединений');
+  raise Exception.Create('РџСЂРµРІС‹С€РЅРѕ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРѕРµРґРёРЅРµРЅРёР№');
  Result := nil;
 
  FLockTaked.Enter;
@@ -105,7 +105,7 @@ begin
    if FTakenConnection < FMaxPoolSize then
      ReserveConnection
    else
-    raise Exception.Create('Превышно количство соединений');
+    raise Exception.Create('РџСЂРµРІС‹С€РЅРѕ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРѕРµРґРёРЅРµРЅРёР№');
  finally
    FLockTaked.Leave;
  end;
