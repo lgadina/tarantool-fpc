@@ -1,4 +1,4 @@
-unit Tarantool.Interfaces;
+﻿unit Tarantool.Interfaces;
 
 interface
 
@@ -25,13 +25,18 @@ type
   ITNTResponce = interface;
   ITNTTuple = interface;
   ITNTUpdateDefinition = interface;
-
+  /// <summary> Интерфейс к сырым данным Tarantool
+  ///  </summary>
   ITNTPacker = interface
     ['{1758BCE7-8E1F-4EDA-BB92-732C2A611ECA}']
     function GetAsBytes: TIdBytes;
     procedure SetAsBytes(const Value: TIdBytes);
 
+    /// <summary>Заголовок пакета данных Tarantool
+    ///  </summary>
+    ///  <returns>Интерфейс к Map<returns>
     function Header: ITNTPackerMap;
+    /// <summary>Тело пакета данных Tarantool</summary>
     function Body: ITNTPackerMap;
     property AsBytes: TIdBytes read GetAsBytes write SetAsBytes;
   end;
@@ -221,6 +226,9 @@ type
     function Select(AKeys: Variant; ALimit: Integer; AOffset: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
     function SelectAll: ITNTTuple;
 
+    function Update(AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
+
+    procedure Delete(AKeys: Variant);
   end;
 
   ITNTIndexList = interface(ITNTResponce)

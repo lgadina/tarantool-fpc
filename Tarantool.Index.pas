@@ -11,6 +11,8 @@ uses Classes
  , Tarantool.Variants
  , Tarantool.Iterator
  , Tarantool.SelectRequest
+ , Tarantool.UpdateRequest
+ , Tarantool.DeleteRequest
  , Variants
  ;
 
@@ -38,6 +40,10 @@ type
     function Select(AKeys: Variant; ALimit: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
     function Select(AKeys: Variant; ALimit: Integer; AOffset: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
     function SelectAll: ITNTTuple;
+
+    function Update(AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
+
+    procedure Delete(AKeys: Variant);
 
     property SpaceId: Int64 read GetSpaceId write SetSpaceId;
     property IId: Int64 read GetIId;
@@ -117,6 +123,14 @@ begin
   FParts := TTNTPartList.Create(AArr.UnpackArray(5));
 end;
 
+procedure TTNTIndex.Delete(AKeys: Variant);
+var DeleteCmd: ITNTDelete;
+begin
+ DeleteCmd := NewDelete(FSpaceId, FIid, AKeys);
+ Connection.WriteToTarantool(DeleteCmd);
+ Connection.ReadFromTarantool(TGUID.Empty);
+end;
+
 function TTNTIndex.GetIId: Int64;
 begin
  Result := FIid;
@@ -179,6 +193,15 @@ end;
 procedure TTNTIndex.SetSpaceId(const Value: Int64);
 begin
   FSpaceId := Value;
+end;
+
+function TTNTIndex.Update(AKeys: Variant;
+  AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
+var UpdateCmd: ITNTUpdate;
+begin
+  UpdateCmd := NewUpdate(FSpaceId, FIid, AKeys, AUpdateDef);
+  Connection.WriteToTarantool(UpdateCmd);
+  Result := Connection.ReadFromTarantool(ITNTTuple) as ITNTTuple;
 end;
 
 { TTNTIndexList }

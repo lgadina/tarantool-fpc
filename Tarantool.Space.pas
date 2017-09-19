@@ -1,4 +1,4 @@
-unit Tarantool.Space;
+﻿unit Tarantool.Space;
 
 interface
 
@@ -64,10 +64,15 @@ type
     function Insert(AValues: Variant): ITNTTuple; overload;
     function Replace(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple; overload;
     function Replace(AValues: Variant): ITNTTuple; overload;
-    function Update(AIndexId: Integer; AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
+    function Update(AIndexId: Integer; AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
+    function Update(AIndexName: String; AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
+
     function UpdateDefinition: ITNTUpdateDefinition;
     function Upsert(AValues: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
-    procedure Delete(AIndex: Int64; AKeys: Variant);
+
+    procedure Delete(AIndex: Int64; AKeys: Variant); overload;
+    procedure Delete(AIndexName: String; AKeys: Variant); overload;
+
     function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
     function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
   end;
@@ -107,13 +112,18 @@ begin
         FIndexList[i].Parts[j].Name := Flds.UnpackMap(FIndexList[i].Parts[j].Id).UnpackString('name');
 end;
 
-procedure TTNTSpace.Delete(AIndex: Int64; AKeys: Variant);
-var DeleteCmd: ITNTDelete;
+procedure TTNTSpace.Delete(AIndexName: String; AKeys: Variant);
+var Idx: ITNTIndex;
 begin
- DeleteCmd := NewDelete(FSpaceId, AIndex, AKeys);
- Connection.WriteToTarantool(DeleteCmd);
+ Idx := FIndexList.NameIndex[AIndexName];
+ if Idx = nil then
+  raise ETarantoolException.CreateFmt('Index %s not found in space %s', [AIndexName, FName]);
+ Idx.Delete(AKeys);
+end;
 
- Connection.ReadFromTarantool(TGUID.Empty);
+procedure TTNTSpace.Delete(AIndex: Int64; AKeys: Variant);
+begin
+ FIndexList[AIndex].Delete(AKeys);
 end;
 
 function TTNTSpace.Eval(AExpression: string; AArguments: Variant): ITNTTuple;
@@ -231,11 +241,19 @@ end;
 
 function TTNTSpace.Update(AIndexId: Integer; AKeys: Variant;
   AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
-var UpdateCmd: ITNTUpdate;
 begin
-  UpdateCmd := NewUpdate(FSpaceId, AIndexId, AKeys, AUpdateDef);
-  Connection.WriteToTarantool(UpdateCmd);
-  Result := Connection.ReadFromTarantool(ITNTTuple) as ITNTTuple;
+  Result := FIndexList[AIndexId].Update(AKeys, AUpdateDef);
+end;
+
+function TTNTSpace.Update(AIndexName: String; AKeys: Variant;
+  AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
+var Idx: ITNTIndex;
+begin
+ Result := nil;
+ Idx := FIndexList.NameIndex[AIndexName];
+ if Idx = nil then
+  raise ETarantoolException.CreateFmt('Index %s not found in space %s', [AIndexName, FName]);
+ Result := Idx.Update(AKeys, AUpdateDef);
 end;
 
 function TTNTSpace.UpdateDefinition: ITNTUpdateDefinition;

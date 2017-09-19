@@ -1,4 +1,4 @@
-unit Tarantool.Utils;
+﻿unit Tarantool.Utils;
 
 {$IFDEF FPC}
         {$MODESWITCH ADVANCEDRECORDS}
