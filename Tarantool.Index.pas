@@ -34,9 +34,9 @@ type
     function GetType: String;
     function GetParts: ITNTParts;
   public
-    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection); override;
-    constructor CreateFromTuple(AArr: ITNTPackerArray; AConnection: ITNTConnection);
-
+    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection; ASpace: ITNTSpace); override;
+    constructor CreateFromTuple(AArr: ITNTPackerArray; AConnection: ITNTConnection; ASpace: ITNTSpace);
+    destructor Destroy; override;
     function Select(AKeys: Variant; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
     function Select(AKeys: Variant; ALimit: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
     function Select(AKeys: Variant; ALimit: Integer; AOffset: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
@@ -61,7 +61,7 @@ type
     function GetCount: Integer;
     function GetNameIndex(AName: String): ITNTIndex;
   public
-    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection); override;
+    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection; ASpace: ITNTSpace); override;
     destructor Destroy; override;
     property index[AIndex: Integer]: ITNTIndex read GetIndex; default;
     property NameIndex[AName: String]: ITNTIndex read GetNameIndex;
@@ -99,7 +99,7 @@ type
 
 { TTNTIndex }
 
-constructor TTNTIndex.Create(APacker: ITNTPacker; AConnection: ITNTConnection);
+constructor TTNTIndex.Create(APacker: ITNTPacker; AConnection: ITNTConnection; ASpace: ITNTSpace);
 begin
   inherited;
   With APacker.Body.UnpackArray(tnData).UnpackArray(0) do
@@ -114,9 +114,9 @@ begin
 end;
 
 constructor TTNTIndex.CreateFromTuple(AArr: ITNTPackerArray;
-  AConnection: ITNTConnection);
+  AConnection: ITNTConnection; ASpace: ITNTSpace);
 begin
-  inherited Create(nil, AConnection);
+  inherited Create(nil, AConnection, ASpace);
   FSpaceId := AArr.UnpackInteger(0);
   FIid := AArr.UnpackInteger(1);
   FName := AArr.UnpackString(2);
@@ -130,7 +130,12 @@ var DeleteCmd: ITNTDelete;
 begin
  DeleteCmd := NewDelete(FSpaceId, FIid, AKeys);
  Connection.WriteToTarantool(DeleteCmd);
- Connection.ReadFromTarantool(TGUID.Empty);
+ Connection.ReadFromTarantool(TGUID.Empty, nil);
+end;
+
+destructor TTNTIndex.Destroy;
+begin
+  inherited;
 end;
 
 function TTNTIndex.GetIId: Int64;
@@ -181,7 +186,7 @@ var SelectCmd: ITNTSelect;
 begin
   SelectCmd := SelectRequest(FSpaceId, FIid, AKeys, AOffset, ALimit, AIterator);
   Connection.WriteToTarantool(SelectCmd);
-  Result := Connection.ReadFromTarantool(ITNTTuple) as ITNTTuple;
+  Result := Connection.ReadFromTarantool(ITNTTuple, Space) as ITNTTuple;
 end;
 
 function TTNTIndex.SelectAll: ITNTTuple;
@@ -189,7 +194,7 @@ var SelectCmd: ITNTSelect;
 begin
  SelectCmd := SelectRequest(FSpaceId, -1, null);
  Connection.WriteToTarantool(SelectCmd);
- Result := Connection.ReadFromTarantool(ITNTTuple) as ITNTTuple;
+ Result := Connection.ReadFromTarantool(ITNTTuple, Space) as ITNTTuple;
 end;
 
 procedure TTNTIndex.SetSpaceId(const Value: Int64);
@@ -203,12 +208,12 @@ var UpdateCmd: ITNTUpdate;
 begin
   UpdateCmd := NewUpdate(FSpaceId, FIid, AKeys, AUpdateDef);
   Connection.WriteToTarantool(UpdateCmd);
-  Result := Connection.ReadFromTarantool(ITNTTuple) as ITNTTuple;
+  Result := Connection.ReadFromTarantool(ITNTTuple, Space) as ITNTTuple;
 end;
 
 { TTNTIndexList }
 
-constructor TTNTIndexList.Create(APacker: ITNTPacker; AConnection: ITNTConnection);
+constructor TTNTIndexList.Create(APacker: ITNTPacker; AConnection: ITNTConnection; ASpace: ITNTSpace);
 var Arr: ITNTPackerArray;
     i: Integer;
 begin
@@ -219,7 +224,7 @@ begin
  begin
    for i := 0 to Arr.Count - 1 do
      begin
-       FIndex.Add(TTNTIndex.CreateFromTuple(Arr.UnpackArray(i), AConnection))
+       FIndex.Add(TTNTIndex.CreateFromTuple(Arr.UnpackArray(i), AConnection, ASpace))
      end;
  end;
 end;

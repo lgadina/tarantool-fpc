@@ -15,6 +15,7 @@ uses
 type
 {$SCOPEDENUMS ON}
   TTNTUpdateOperationCode = (Addition, Subtraction, BitwiseAnd, BitwiseXor, BitwiseOr, Delete, Insert, Assigned, Splice);
+  TTNTFieldType = (tftString, tftUnsigned, tftNumber, tftMap, tftArray);
 {$SCOPEDENUMS OFF}
 
 type
@@ -118,7 +119,7 @@ type
     function GetFromPool: boolean;
     procedure SetFromPool(const Value: boolean);
 
-    function ReadFromTarantool(AResponseGuid: TGUID): ITNTResponce;
+    function ReadFromTarantool(AResponseGuid: TGUID; ASpace: ITNTSpace): ITNTResponce;
     procedure WriteToTarantool(ACommand: ITNTCommand);
 
     procedure Open;
@@ -180,9 +181,11 @@ type
     ['{B63D9813-A4E7-41A5-9533-4394D22D1945}']
     function GetCode: integer;
     function GetRequestId: Int64;
+    function GetSpace: ITNTSpace;
 
     property Code: integer read GetCode;
     property RequestId: Int64 read GetRequestId;
+    property Space: ITNTSpace read GetSpace;
   end;
 
   ITNTPart = interface
@@ -268,6 +271,7 @@ type
    property Values: Variant read GetValues;
    property RowCount: Integer read GetRowCount;
    property Row[Index: Integer]: Variant read GetRow;
+   function FieldByName(ARow: Integer; AFieldName: String): Variant;
    property ItemCount[ARowIndex: Integer]: Integer read GetItemCount;
   end;
 
@@ -295,6 +299,16 @@ type
     property Keys: Variant read GetKeys write SetKeys;
   end;
 
+  ITNTField = interface
+    ['{A69CC4F5-37AD-4110-A501-93674E011B1E}']
+    function GetName: String;
+    function GetType: TTNTFieldType;
+    function GetIndex: Integer;
+
+    property Name: String read GetName;
+    property &Type: TTNTFieldType read GetType;
+    property Index: Integer read GetIndex;
+  end;
 
   ITNTSpace = interface(ITNTResponce)
   ['{3AA2D792-A0C8-426B-91D6-5A52A4EC623B}']
@@ -308,6 +322,7 @@ type
     function GetOwnerId: Int64;
     function GetSpaceId: Int64;
     function GetIndexes: ITNTIndexList;
+    function GetField(Index: Integer): ITNTField;
 
     function Select(AIndexId: Integer; AKeys: Variant; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
     function Select(AIndexId: Integer; AKeys: Variant; ALimit: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
@@ -332,6 +347,9 @@ type
     function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
     function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
     function Count: Integer;
+    property Field[Index: Integer]: ITNTField read GetField;
+    function FieldByName(AName: string): ITNTField;
+
   end;
 
   ITNTUpdateDefinition = interface

@@ -64,6 +64,7 @@ type
     procedure SetValue(const aName: string; const aValue: variant);
     function GetItem(aIndex: integer): variant;
     procedure SetItem(aIndex: integer; const aItem: variant);
+
   public
     Names: TTNTStringDynArray;
     Values: TTNTVariantDynArray;
@@ -80,6 +81,7 @@ type
     function EnsureData(const aPath: string): PTNTVariantData;
     function AddItem: PTNTVariantData;
     procedure AddValue(const aValue: variant);
+    procedure SetIndexedValue(const AIndex: Integer; const AValue: Variant);
     function AddTNTVariant: Variant;
     function AddNamedTNTValue(const aName: String; const aValue: Variant): variant;
     procedure AddNameValue(const aName: string; const aValue: variant);
@@ -393,6 +395,21 @@ begin
       result := Values[aIndex];
 end;
 
+procedure TTNTVariantData.SetIndexedValue(const AIndex: Integer;
+  const AValue: Variant);
+begin
+  if VKind=tvkUndefined then
+    VKind := tvkArray else
+    if VKind<>tvkArray then
+      raise ETNTVariantException.Create('SetIndexedValue() over object');
+  if AIndex >= VCount then
+   if (VCount+AIndex) >=length(Values) then
+     SetLength(Values,(VCount+AIndex)+VCount shr 3+32);
+  Values[AIndex] := aValue;
+  if AIndex >= VCount then
+    VCount := AIndex+1;
+end;
+
 procedure TTNTVariantData.SetItem(aIndex: integer; const aItem: variant);
 begin
   if (@self<>nil) and (VType=TNTVariantType.VarType) and (VKind=tvkArray) then
@@ -437,6 +454,7 @@ begin
     end;
   SetValue(aPath,aValue);
 end;
+
 
 function TTNTVariantData.EnsureData(const aPath: string): PTNTVariantData;
 var i: integer;

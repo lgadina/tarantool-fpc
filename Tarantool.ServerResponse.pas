@@ -11,7 +11,9 @@ type
     FCode: Integer;
     FRequestId: Int64;
     FConnection: ITNTConnection;
+    FSpace: ITNTSpace;
     function GetConnection: ITNTConnection;
+    function GetSpace: ITNTSpace;
   protected
     function GetCode: integer;
     function GetRequestId: Int64;
@@ -20,7 +22,8 @@ type
     property Code: integer read GetCode;
     property RequestId: Int64 read GetRequestId;
     property Connection: ITNTConnection read GetConnection;
-    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection); virtual;
+    property Space: ITNTSpace read GetSpace;
+    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection; ASpace: ITNTSpace); virtual;
 
   end;
 
@@ -68,7 +71,7 @@ end;
 
 { TTNTResponse }
 
-constructor TTNTResponce.Create(APacker: ITNTPacker; AConnection: ITNTConnection);
+constructor TTNTResponce.Create(APacker: ITNTPacker; AConnection: ITNTConnection; ASpace: ITNTSpace);
 begin
  if APacker <> nil then
  begin
@@ -76,11 +79,13 @@ begin
   FRequestId := APacker.Header.UnpackInteger(tnSync);
  end;
   FConnection := AConnection;
+  FSpace := ASpace;
 end;
 
 destructor TTNTResponce.Destroy;
 begin
   FConnection := nil;
+  FSpace := nil;
   inherited;
 end;
 
@@ -97,6 +102,11 @@ end;
 function TTNTResponce.GetRequestId: Int64;
 begin
   Result := FRequestId;
+end;
+
+function TTNTResponce.GetSpace: ITNTSpace;
+begin
+  Result := FSpace;
 end;
 
 initialization

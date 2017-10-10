@@ -4,7 +4,7 @@ unit Tarantool.UpdateRequest;
 interface
 uses Tarantool.Interfaces;
 
-function UpdateDefinition: ITNTUpdateDefinition;
+function UpdateDefinition(ASpace: ITNTSpace): ITNTUpdateDefinition;
 function NewUpdate(ASpaceId, AIndexId: Int64; AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTUpdate;
 
 implementation
@@ -64,11 +64,13 @@ type
       end;
   private
     FOperList: TObjectList;
+    FSpace: ITNTSpace;
   public
-    constructor Create;
+    constructor Create(ASpace: ITNTSpace);
     destructor Destroy; override;
     procedure PackToMessage(APacker: ITNTPackerArray);
-    function AddOperation(AFieldNo: Integer; AOperation: TTNTUpdateOperationCode; AValue: Variant): ITNTUpdateDefinition;
+    function AddOperation(AFieldNo: Integer; AOperation: TTNTUpdateOperationCode; AValue: Variant): ITNTUpdateDefinition; overload;
+    function AddOperation(AFieldName: String; AOperation: TTNTUpdateOperationCode; AValue: Variant): ITNTUpdateDefinition; overload;
   end;
 
 type
@@ -107,13 +109,26 @@ begin
   Result := Self;
 end;
 
-constructor TTNTUpdateDefintion.Create;
+function TTNTUpdateDefintion.AddOperation(AFieldName: String;
+  AOperation: TTNTUpdateOperationCode; AValue: Variant): ITNTUpdateDefinition;
+var Field: ITNTField;
 begin
+  Field := FSpace.FieldByName(AFieldName);
+  if Field <> nil then
+    Result := AddOperation(Field.Index, AOperation, AValue)
+  else
+   raise ETarantoolInvalidUpdateOperation.CreateFmt('Field %s not defined', [AFieldName]);
+end;
+
+constructor TTNTUpdateDefintion.Create(ASpace: ITNTSpace);
+begin
+ FSpace := ASpace;
  FOperList := TObjectList.Create;
 end;
 
 destructor TTNTUpdateDefintion.Destroy;
 begin
+  FSpace := nil;
   FOperList.Free;
   inherited;
 end;
@@ -166,9 +181,9 @@ begin
  FUpdateDef := Value;
 end;
 
-function UpdateDefinition: ITNTUpdateDefinition;
+function UpdateDefinition(ASpace: ITNTSpace): ITNTUpdateDefinition;
 begin
-  Result := TTNTUpdateDefintion.Create;
+  Result := TTNTUpdateDefintion.Create(ASpace);
 end;
 
 function NewUpdate(ASpaceId, AIndexId: Int64; AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTUpdate;

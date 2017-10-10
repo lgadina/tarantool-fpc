@@ -27,7 +27,7 @@ type
     function GetErrorCode: Integer;
     function GetErrorMessage: String;
   public
-    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection); override;
+    constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection; ASpace: ITNTSpace); override;
 
     property ErrorCode: Integer read GetErrorCode;
     property ErrorMessage: String read GetErrorMessage;
@@ -35,7 +35,7 @@ type
 
 { TTNTError }
 
-constructor TTNTError.Create(APacker: ITNTPacker; AConnection: ITNTConnection);
+constructor TTNTError.Create(APacker: ITNTPacker; AConnection: ITNTConnection; ASpace: ITNTSpace);
 begin
   inherited;
   FMessage := APacker.Body.UnpackString(tnError);
@@ -53,7 +53,7 @@ end;
 
 function ErrorResponse(APacker: ITNTPacker; AConnection: ITNTConnection): ITNTError;
 begin
-  Result := TTNTError.Create(APacker, AConnection);
+  Result := TTNTError.Create(APacker, AConnection, nil);
 end;
 
 end.

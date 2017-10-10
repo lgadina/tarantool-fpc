@@ -85,7 +85,7 @@ type
 
     function CreateScramble(ASalt: TIdBytes): TIdBytes; overload;
     function CreateScramble(ASalt: RawByteString): TIdBytes; overload;
-    function ReadFromTarantool(AResponceGuid: TGUID): ITNTResponce;
+    function ReadFromTarantool(AResponceGuid: TGUID; ASpace: ITNTSpace): ITNTResponce;
     procedure WriteToTarantool(ACommand: ITNTCommand);
   public
     constructor Create(AFromPool: Boolean = False); virtual;
@@ -121,7 +121,7 @@ var CallCmd: ITNTCall;
 begin
   CallCmd := NewCall(AFunctionName, AArguments);
   WriteToTarantool(CallCmd);
-  Result := ReadFromTarantool(ITNTTuple) as ITNTTuple;
+  Result := ReadFromTarantool(ITNTTuple, nil) as ITNTTuple;
 end;
 
 procedure TTNTConnection.Close;
@@ -206,7 +206,7 @@ var EvalCmd : ITNTEval;
 begin
   EvalCmd := NewEval(AExpression, AArguments);
   WriteToTarantool(EvalCmd);
-  Result := ReadFromTarantool(ITNTTuple) as ITNTTuple;
+  Result := ReadFromTarantool(ITNTTuple, nil) as ITNTTuple;
 end;
 
 function TTNTConnection.FindSpaceByName(ASpaceName: string): ITNTSpace;
@@ -214,7 +214,7 @@ var Select: ITNTSelect;
 begin
   Select := SelectRequest(VSpaceSpaceId, VSpaceNameIndexId, ASpaceName);
   WriteToTarantool(Select);
-  Result := ReadFromTarantool(ITNTSpace) as ITNTSpace;
+  Result := ReadFromTarantool(ITNTSpace, nil) as ITNTSpace;
 end;
 
 function TTNTConnection.GetUserName: string;
@@ -318,7 +318,7 @@ begin
          AuthRequest.Scramble := Buf;
          AuthRequest.RequestId := 1;
          WriteToTarantool(AuthRequest);
-         ReadFromTarantool(TGUID.Empty);
+         ReadFromTarantool(TGUID.Empty, nil);
 
        end;
     except
@@ -331,7 +331,7 @@ begin
   end;
 end;
 
-function TTNTConnection.ReadFromTarantool(AResponceGuid: TGUID): ITNTResponce;
+function TTNTConnection.ReadFromTarantool(AResponceGuid: TGUID; ASpace: ITNTSpace): ITNTResponce;
 var InBuf: TIdBytes;
     BufLen: Integer;
     Packer: ITNTPacker;
@@ -352,7 +352,7 @@ begin
     end;
   FClass := GetResponseClass(AResponceGuid);
   if FClass <> nil then
-   Result := FClass.Create(Packer, Self);
+   Result := FClass.Create(Packer, Self, ASpace);
 end;
 
 procedure TTNTConnection.SetFromPool(const Value: boolean);
