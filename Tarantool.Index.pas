@@ -13,7 +13,7 @@ uses Classes
  , Tarantool.SelectRequest
  , Tarantool.UpdateRequest
  , Tarantool.DeleteRequest
- , Tarantool.Utils
+ , Tarantool.SimpleMsgPack
  , Variants
  ;
 
@@ -78,7 +78,8 @@ type
     function GetType: String;
     procedure SetName(const Value: String);
   public
-    constructor Create(AArray: ITNTPackerArray);
+    constructor Create(AArray: ITNTPackerArray); overload;
+    constructor Create(AMap: ITNTPackerMap); overload;
     property Id: Int64 read GetId;
     property Name: String read GetName write SetName;
     property &Type: String read GetType;
@@ -255,10 +256,17 @@ end;
 
 constructor TTNTPartList.Create(APacker: ITNTPackerArray);
 var i: Integer;
+
 begin
  FList := TInterfaceList.Create;
  for i := 0 to APacker.Count - 1 do
-     FList.Add(TTNTPart.Create(APacker.UnpackArray(i)));
+  begin
+   if  APacker.DataType(i) = mptArray then
+    FList.Add(TTNTPart.Create(APacker.UnpackArray(i)))
+   else
+   if APacker.DataType(i) = mptMap then
+    FList.Add(TTNTPart.Create(APacker.UnpackMap(i)))
+  end;
 end;
 
 destructor TTNTPartList.Destroy;
@@ -283,6 +291,12 @@ constructor TTNTPart.Create(AArray: ITNTPackerArray);
 begin
  FId := AArray.UnpackInteger(0);
  FType := AArray.UnpackString(1);
+end;
+
+constructor TTNTPart.Create(AMap: ITNTPackerMap);
+begin
+  FId := AMap.UnpackInteger('field');
+  FType := AMap.UnpackString('type');
 end;
 
 function TTNTPart.GetId: Int64;

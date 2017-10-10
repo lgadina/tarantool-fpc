@@ -25,6 +25,7 @@ type
   ITNTResponce = interface;
   ITNTTuple = interface;
   ITNTUpdateDefinition = interface;
+  ITNTSpace = interface;
   /// <summary> Интерфейс к сырым данным Tarantool
   ///  </summary>
   ITNTPacker = interface
@@ -122,7 +123,7 @@ type
 
     procedure Open;
     procedure Close;
-    function FindSpaceByName(ASpaceName: string): IUnknown;
+    function FindSpaceByName(ASpaceName: string): ITNTSpace;
     property HostName: string read GetHostName write SetHostName;
     property UserName: string read GetUserName write SetUserName;
     property Password: string read GetPassword write SetPassword;
@@ -330,6 +331,7 @@ type
     procedure Delete(AIndex: Int64; AKeys: Variant);
     function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
     function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
+    function Count: Integer;
   end;
 
   ITNTUpdateDefinition = interface

@@ -1,4 +1,4 @@
-unit Tarantool.Pool;
+﻿unit Tarantool.Pool;
 
 interface
 uses Tarantool.Interfaces;
@@ -114,7 +114,7 @@ begin
  try
   {$IfDef FPC}
   Result := FConnList.Dequeue;
-  if Result <> nil then
+  if Result = nil then
   {$Else}
   if FConnList.PopItem(Result) = wrTimeout then
   {$EndIf}

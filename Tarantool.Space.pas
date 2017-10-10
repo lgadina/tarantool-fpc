@@ -75,6 +75,9 @@ type
 
     function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
     function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
+
+    function Count: Integer;
+
   end;
 
 
@@ -83,6 +86,16 @@ type
 function TTNTSpace.Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
 begin
  Result := Connection.Call(AFunctionName, AArguments);
+end;
+
+function TTNTSpace.Count: Integer;
+var Tuple: ITNTTuple;
+begin
+ Tuple := Eval('return box.space.'+FName+':count()', Null);
+ if Tuple <> nil then
+  Result := Tuple.Row[0]
+ else
+  Result := 0;
 end;
 
 constructor TTNTSpace.Create(APacker: ITNTPacker; AConnection: ITNTConnection);

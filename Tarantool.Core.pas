@@ -92,7 +92,7 @@ type
     destructor Destroy; override;
     procedure Open;
     procedure Close;
-    function FindSpaceByName(ASpaceName: string): IUnknown;
+    function FindSpaceByName(ASpaceName: string): ITNTSpace;
     property HostName: string read GetHostName write SetHostName;
     property UserName: string read GetUserName write SetUserName;
     property Password: string read GetPassword write SetPassword;
@@ -209,7 +209,7 @@ begin
   Result := ReadFromTarantool(ITNTTuple) as ITNTTuple;
 end;
 
-function TTNTConnection.FindSpaceByName(ASpaceName: string): IUnknown;
+function TTNTConnection.FindSpaceByName(ASpaceName: string): ITNTSpace;
 var Select: ITNTSelect;
 begin
   Select := SelectRequest(VSpaceSpaceId, VSpaceNameIndexId, ASpaceName);

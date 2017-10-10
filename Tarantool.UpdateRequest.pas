@@ -127,7 +127,7 @@ begin
    begin
      Obj := TTNTUpdateOperationClass(FOperList[I]);
      L := APacker.PackArray;
-     L.Pack(Obj.Operation.ToChar).pack(Obj.FieldNo);
+     L.Pack(Obj.Operation.ToChar).pack(Obj.FieldNo - 1);
      if VarType(Obj.Value) = TNTVariantType.VarType then
        TTNTVariantData(Obj.Value).PackToMessage(L.PackArray)
      else
