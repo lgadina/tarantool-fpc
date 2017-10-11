@@ -55,6 +55,8 @@ type
     function Count: Integer;
     function Name(const Index: Integer): String;
     function DataType(const Index: Integer): TMsgPackType;
+    function IsExist(const AKey: Integer): Boolean; overload;
+    function IsExist(const AKey: String): Boolean; overload;
     function UnpackArray(const AKey: Integer): ITNTPackerArray; overload;
     function UnpackArray(const AKey: String): ITNTPackerArray; overload;
     function UnpackMap(const AKey: Integer): ITNTPackerMap; overload;
@@ -258,6 +260,16 @@ end;
 function TTNTPackMap.GetAsBytes: TBytes;
 begin
  Result := FObj.EncodeToBytes;
+end;
+
+function TTNTPackMap.IsExist(const AKey: Integer): Boolean;
+begin
+ Result := FObj.OO[AKey] <> nil;
+end;
+
+function TTNTPackMap.IsExist(const AKey: String): Boolean;
+begin
+ Result := FObj.O[AKey] <> nil;
 end;
 
 function TTNTPackMap.Name(const Index: Integer): String;

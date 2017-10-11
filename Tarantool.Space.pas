@@ -17,6 +17,7 @@ uses SysUtils
  , Tarantool.DeleteRequest
  , Tarantool.UpsertRequest
  , Tarantool.Exceptions
+ , Tarantool.SimpleMsgPack
  , Tarantool.Utils
  , Variants
  , System.Generics.Collections
@@ -100,7 +101,7 @@ type
 
     procedure Delete(AIndex: Int64; AKeys: Variant); overload;
     procedure Delete(AIndexName: String; AKeys: Variant); overload;
-
+    procedure Truncate;
     function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
     function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
 
@@ -136,41 +137,47 @@ var Maps: ITNTPackerMap;
     LSelect: ITNTSelect;
     Fld: ITNTField;
 begin
-  inherited;
-  FFields := TTNTFieldList.Create();
-  With APacker.Body.UnpackArray(tnData).UnpackArray(0) do
+  if APacker.Body.IsExist(tnData) and (APacker.Body.UnpackArray(tnData).Count > 0)
+  then
   begin
-   FSpaceId := UnpackInteger(0);
-   FOwnerId := UnpackInteger(1);
-   FName := UnpackString(2);
-   FEngine := UnpackString(3);
-   FFieldCount := UnpackInteger(4);
-   Maps := UnpackMap(5);
-   Flds := UnpackArray(6);
-  end;
-  if Flds.Count > 0 then
-  begin
-    for i := 0 to Flds.Count - 1 do
-    begin
-      Fld := TTNTField.CreateFromMap(Flds.UnpackMap(i), i);
-      FFields.Add(Fld.Name, Fld);
-    end;
-  end;
-  LSelect := SelectRequest(VIndexSpaceId, VIndexIdIndexId, FSpaceId);
-  Connection.WriteToTarantool(LSelect);
-  FIndexList := Connection.ReadFromTarantool(ITNTIndexList, Self) as ITNTIndexList;
-  if Flds.Count > 0 then
-  begin
-    for i := 0 to FIndexList.Count - 1 do
-     for j := 0 to FIndexList[i].Parts.Count - 1 do
-      if FIndexList[i].Parts[j].Id < Flds.Count then
+   inherited;
+
+      FFields := TTNTFieldList.Create();
+      With APacker.Body.UnpackArray(tnData).UnpackArray(0) do
       begin
-        Fld := Field[FIndexList[i].Parts[j].Id];
-        if Fld <> nil then
-         FIndexList[i].Parts[j].Name := Fld.Name;
-        //FIndexList[i].Parts[j].Name := Flds.UnpackMap(FIndexList[i].Parts[j].Id).UnpackString('name');
+       FSpaceId := UnpackInteger(0);
+       FOwnerId := UnpackInteger(1);
+       FName := UnpackString(2);
+       FEngine := UnpackString(3);
+       FFieldCount := UnpackInteger(4);
+       Maps := UnpackMap(5);
+       Flds := UnpackArray(6);
       end;
-  end;
+      if Flds.Count > 0 then
+      begin
+        for i := 0 to Flds.Count - 1 do
+        begin
+          Fld := TTNTField.CreateFromMap(Flds.UnpackMap(i), i);
+          FFields.Add(Fld.Name, Fld);
+        end;
+      end;
+      LSelect := SelectRequest(VIndexSpaceId, VIndexIdIndexId, FSpaceId);
+      Connection.WriteToTarantool(LSelect);
+      FIndexList := Connection.ReadFromTarantool(ITNTIndexList, Self) as ITNTIndexList;
+      if Flds.Count > 0 then
+      begin
+        for i := 0 to FIndexList.Count - 1 do
+         for j := 0 to FIndexList[i].Parts.Count - 1 do
+          if FIndexList[i].Parts[j].Id < Flds.Count then
+          begin
+            Fld := Field[FIndexList[i].Parts[j].Id];
+            if Fld <> nil then
+             FIndexList[i].Parts[j].Name := Fld.Name;
+            //FIndexList[i].Parts[j].Name := Flds.UnpackMap(FIndexList[i].Parts[j].Id).UnpackString('name');
+          end;
+      end;
+  end else
+   raise ETarantoolException.Create('Space not found');
 end;
 
 procedure TTNTSpace.Delete(AIndexName: String; AKeys: Variant);
@@ -329,6 +336,11 @@ end;
 procedure TTNTSpace.SetSpaceId(const Value: Int64);
 begin
   FSpaceId := Value;
+end;
+
+procedure TTNTSpace.Truncate;
+begin
+  Eval('return box.space.'+FName+':truncate()', null);
 end;
 
 function TTNTSpace.Update(AIndexId: Integer; AKeys: Variant;

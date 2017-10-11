@@ -61,6 +61,8 @@ type
     function Count: Integer;
     function Name(const Index: Integer): String;
     function DataType(const Index: Integer): TMsgPackType;
+    function IsExist(const AKey: Integer): Boolean; overload;
+    function IsExist(const AKey: String): Boolean; overload;
 
     function UnpackArray(const AKey: Integer): ITNTPackerArray; overload;
     function UnpackArray(const AKey: String): ITNTPackerArray; overload;
@@ -349,6 +351,7 @@ type
     function Count: Integer;
     property Field[Index: Integer]: ITNTField read GetField;
     function FieldByName(AName: string): ITNTField;
+    procedure Truncate;
 
   end;
 
