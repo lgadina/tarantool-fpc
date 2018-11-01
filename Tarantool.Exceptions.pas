@@ -1,5 +1,5 @@
 unit Tarantool.Exceptions;
-
+{$I Tarantool.Options.inc}
 interface
 uses SysUtils;
 

@@ -7,6 +7,8 @@ uses
 function NewConnection(AHost: String; APort: Word; AMaxPoolSize: Integer = 10;
     AUseSSL: Boolean = False; AUsername: String = ''; APassword : String = ''): ITNTConnection;
 
+function NewConnectionFromPool(APool: ITNTConnectionPool): ITNTConnection;
+
 implementation
 uses
 {$IfDef FPC}
@@ -39,10 +41,14 @@ uses
   , Tarantool.SimpleMsgPack
   , Tarantool.Pool
   , Tarantool.Utils
+  , Tarantool.Exceptions
+  , Generics.Collections
 ;
 
 
 type
+  TTNTSpaceList = class(TDictionary<String,ITNTSpace>);
+
   TTNTConnection = class(TInterfacedObject, ITNTConnection)
   private
   private
@@ -51,6 +57,8 @@ type
     {$IfNDef FPC}
     FSSLIOHandler: TIdSSLIOHandlerSocketOpenSSL;
     {$EndIf}
+    FSpaceList: TTNTSpaceList;
+    FPool: ITNTConnectionPool;
     FPort: integer;
     FUseSSL: Boolean;
     FHostName: string;
@@ -58,7 +66,6 @@ type
     FUserName: string;
     FIsReady: boolean;
     FVersion: String;
-    FFromPool: Boolean;
     function GetUserName: string;
     function GetHostName: string;
     function GetIsReady: boolean;
@@ -72,8 +79,8 @@ type
     procedure SetUserName(const Value: string);
     procedure SetUseSSL(const Value: Boolean);
     function GetTarantoolPacketLength(ABuf: TBytes): Integer;
-    function GetFromPool: boolean;
-    procedure SetFromPool(const Value: boolean);
+    function GetPool: ITNTConnectionPool;
+    procedure SetPool(const Value: ITNTConnectionPool);
 
   protected
     function IdBytes2Bytes(ABytes: TIdBytes): TBytes;
@@ -88,7 +95,7 @@ type
     function ReadFromTarantool(AResponceGuid: TGUID; ASpace: ITNTSpace): ITNTResponce;
     procedure WriteToTarantool(ACommand: ITNTCommand);
   public
-    constructor Create(AFromPool: Boolean = False); virtual;
+    constructor Create(APool: ITNTConnectionPool = nil); virtual;
     destructor Destroy; override;
     procedure Open;
     procedure Close;
@@ -100,7 +107,7 @@ type
     property UseSSL: Boolean read GetUseSSL write SetUseSSL;
     property IsReady: boolean read GetIsReady;
     property Version: String read GetVersion;
-    property FromPool: boolean read GetFromPool write SetFromPool;
+    property Pool: ITNTConnectionPool read GetPool Write SetPool;
     function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
     function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
   public
@@ -125,7 +132,14 @@ begin
 end;
 
 procedure TTNTConnection.Close;
+var Space: ITNTSpace;
 begin
+ for Space in FSpaceList.Values do
+  Space.Close;
+ FSpaceList.Clear;
+ if FPool <> nil then
+  FPool.Put(Self)
+ else
  if Assigned(FTCPClient) then
   begin
     FTCPClient.Disconnect;
@@ -144,7 +158,7 @@ begin
   FTcpClient.Socket.OnStatus := SocketOnStatus;
 end;
 
-constructor TTNTConnection.Create(AFromPool: Boolean = False);
+constructor TTNTConnection.Create(APool: ITNTConnectionPool = nil);
 begin
   FTCPClient := nil;
  {$IfNDef FPC}
@@ -153,7 +167,8 @@ begin
   FIsReady := False;
   FVersion := '';
   FRequestId := 1;
-  FFromPool := AFromPool;
+  FPool :=  APool;
+  FSpaceList := TTNTSpaceList.Create;
 end;
 
 function TTNTConnection.CreateScramble(ASalt: RawByteString): TIdBytes;
@@ -191,12 +206,15 @@ end;
 
 destructor TTNTConnection.Destroy;
 begin
+  Close;
+  FreeAndNil(FSpaceList);
   if Assigned(FTCPClient) then
    FreeAndNil(FTCPClient);
  {$IfNDef FPC}
   if Assigned(FSSLIOHandler) then
    FreeAndNil(FSSLIOHandler);
  {$EndIf}
+  FPool := nil;
   inherited;
 end;
 
@@ -212,19 +230,24 @@ end;
 function TTNTConnection.FindSpaceByName(ASpaceName: string): ITNTSpace;
 var Select: ITNTSelect;
 begin
+ if not FSpaceList.ContainsKey(ASpaceName) then
+ begin
   Select := SelectRequest(VSpaceSpaceId, VSpaceNameIndexId, ASpaceName);
   WriteToTarantool(Select);
   Result := ReadFromTarantool(ITNTSpace, nil) as ITNTSpace;
+  FSpaceList.Add(ASpaceName, Result);
+ end else
+  Result := FSpaceList[ASpaceName];
+ if Result.SpaceId = 0 then // space is closed
+  begin
+    FSpaceList.Remove(ASpaceName);
+    Result := FindSpaceByName(ASpaceName);
+  end;
 end;
 
 function TTNTConnection.GetUserName: string;
 begin
  Result := FUserName;
-end;
-
-function TTNTConnection.GetFromPool: boolean;
-begin
- Result := FFromPool;
 end;
 
 function TTNTConnection.GetHostName: string;
@@ -240,6 +263,11 @@ end;
 function TTNTConnection.GetPassword: string;
 begin
  Result := FPassword;
+end;
+
+function TTNTConnection.GetPool: ITNTConnectionPool;
+begin
+ Result := FPool;
 end;
 
 function TTNTConnection.GetPort: integer;
@@ -348,16 +376,11 @@ begin
    if Packer.Header.UnpackInteger(tnCode) >= tncERROR then
     begin
      Result := ErrorResponse(Packer, Self);
-     raise Exception.Create((Result as ITNTError).ErrorMessage);
+     raise ETarantoolException.Create((Result as ITNTError).ErrorMessage);
     end;
   FClass := GetResponseClass(AResponceGuid);
   if FClass <> nil then
    Result := FClass.Create(Packer, Self, ASpace);
-end;
-
-procedure TTNTConnection.SetFromPool(const Value: boolean);
-begin
- FFromPool := Value;
 end;
 
 procedure TTNTConnection.SetHostName(const Value: string);
@@ -368,6 +391,11 @@ end;
 procedure TTNTConnection.SetPassword(const Value: string);
 begin
   FPassword := Value;
+end;
+
+procedure TTNTConnection.SetPool(const Value: ITNTConnectionPool);
+begin
+ FPool := Value;
 end;
 
 procedure TTNTConnection.SetPort(const Value: integer);
@@ -444,6 +472,11 @@ begin
  Result.UserName := AUsername;
  Result.UseSSL := AUseSSL;
  Result.Password := APassword;
+end;
+
+function NewConnectionFromPool(APool: ITNTConnectionPool): ITNTConnection;
+begin
+  Result := TTNTConnection.Create(APool);
 end;
 
 end.

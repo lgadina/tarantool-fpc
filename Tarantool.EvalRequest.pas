@@ -1,5 +1,5 @@
 unit Tarantool.EvalRequest;
-
+{$I Tarantool.Options.inc}
 interface
 uses Tarantool.Interfaces;
 

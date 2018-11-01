@@ -14,6 +14,7 @@ uses Classes
  , Tarantool.UpdateRequest
  , Tarantool.DeleteRequest
  , Tarantool.SimpleMsgPack
+ , Tarantool.Utils
  , Variants
  ;
 

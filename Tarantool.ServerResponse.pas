@@ -1,5 +1,5 @@
 unit Tarantool.ServerResponse;
-
+{$I Tarantool.Options.inc}
 interface
 
 uses
@@ -19,6 +19,7 @@ type
     function GetRequestId: Int64;
   public
     destructor Destroy; override;
+    procedure Close; virtual;
     property Code: integer read GetCode;
     property RequestId: Int64 read GetRequestId;
     property Connection: ITNTConnection read GetConnection;
@@ -45,11 +46,7 @@ uses
 
 
 type
-{$IfDef FPC}
-  TResponseClassList = specialize TDictionary<TGUID, TTNTResponseClass>;
-{$Else}
   TResponseClassList = class(TDictionary<TGUID,TTNTResponseClass>);
-{$EndIf}
 
 var
   FResponseClassList : TResponseClassList = nil;
@@ -70,6 +67,11 @@ begin
 end;
 
 { TTNTResponse }
+
+procedure TTNTResponce.Close;
+begin
+
+end;
 
 constructor TTNTResponce.Create(APacker: ITNTPacker; AConnection: ITNTConnection; ASpace: ITNTSpace);
 begin

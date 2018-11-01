@@ -1,5 +1,5 @@
 unit Tarantool.ErrorResponse;
-
+{$I Tarantool.Options.inc}
 interface
 uses
    Tarantool.Interfaces;

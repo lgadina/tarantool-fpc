@@ -1,5 +1,5 @@
 unit Tarantool.SelectRequest;
-
+{$I Tarantool.Options.inc}
 interface
 
 uses Classes

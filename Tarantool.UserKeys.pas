@@ -1,5 +1,5 @@
 unit Tarantool.UserKeys;
-
+{$I Tarantool.Options.inc}
 interface
 
 const

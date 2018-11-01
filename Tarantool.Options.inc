@@ -5,12 +5,8 @@
 {$ENDIF}
 
 {$IFDEF FPC}
-        {$MODESWITCH ADVANCEDRECORDS}
-        {$MODESWITCH TYPEHELPERS}
-{$ENDIF}
-
-{$ifdef FPC}
-
+  {$MODESWITCH ADVANCEDRECORDS}
+  {$MODESWITCH TYPEHELPERS}
   {$MODE DELPHI}
   {$INLINE ON}
   {$MINENUMSIZE 1}
@@ -18,7 +14,7 @@
   {$PACKENUM 1}
 
   {$define HASINLINE}
-  {$define USEOBJECTINSTEADOFRECORD}
+  {define USEOBJECTINSTEADOFRECORD}
   {$Q-} // disable overflow checking
   {$R-} // disable range checking
 
@@ -30,6 +26,9 @@
   {$endif}
   {$ifdef VER3_1}
     {$define ISFPC27}
+  {$endif}
+  {$ifdef VER3_3}
+     {$define ISFPC27}
   {$endif}
 
 

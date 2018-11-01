@@ -1,5 +1,5 @@
 ﻿unit Tarantool.Pool;
-
+{$I Tarantool.Options.inc}
 interface
 uses Tarantool.Interfaces;
 
@@ -21,7 +21,7 @@ uses SysUtils
 
 type
 {$IfDef FPC}
-  TTarantoolConnectionList = specialize TQueue<ITNTConnection>;
+  TTarantoolConnectionList = TQueue<ITNTConnection>;
 {$Else}
   TTarantoolConnectionList = TThreadedQueue<ITNTConnection>;
 {$EndIf}
@@ -66,10 +66,11 @@ end;
 
 function TTarantoolPool.CreateNewConnection: ITNTConnection;
 begin
- Result := NewConnection(FHost, FPort);
+ Result := NewConnectionFromPool(Self);
+ Result.HostName := FHost;
+ Result.Port := FPort;
  Result.UserName := FUserName;
  Result.Password := FPassword;
- Result.FromPool := True;
  Result.Open;
  Inc(FAllocatedConnection);
 end;
@@ -80,7 +81,8 @@ begin
   FreeAndNil(FLockTaked);
   FreeAndNil(FBusy);
 {$IfDef FPC}
-  while FConnList.Dequeue <> nil do ;
+  while FConnList.Count > 0 do
+   FConnList.Dequeue;
 {$Else}
   while FConnList.PopItem <> nil do ;
 {$EndIf}
@@ -113,13 +115,18 @@ begin
  FLockPooled.Enter;
  try
   {$IfDef FPC}
-  Result := FConnList.Dequeue;
+  if FConnList.Count > 0 then
+   Result := FConnList.Dequeue
+  else
+   Result := nil;
   if Result = nil then
   {$Else}
   if FConnList.PopItem(Result) = wrTimeout then
   {$EndIf}
    if FAllocatedConnection < FMaxPoolSize then
     Result := CreateNewConnection;
+   if (Result <> nil) and (Result.Pool = nil) then
+    Result.Pool := Self;
  finally
    FLockPooled.Leave;
  end;
@@ -129,13 +136,14 @@ procedure TTarantoolPool.Put(AConnection: ITNTConnection);
 begin
  FLockPooled.Enter;
  try
-   if AConnection.FromPool then
+   if AConnection.Pool <> nil then
    begin
      {$IfDef FPC}
      FConnList.Enqueue(AConnection);
      {$Else}
      FConnList.PushItem(AConnection);
      {$EndIf}
+     AConnection.Pool := nil;
      FLockTaked.Enter;
      try
       Dec(FTakenConnection);

@@ -455,12 +455,13 @@ var
   pd: PChar;
   pb: PByte;
 begin
+  Result := '';
   if SizeOf(Char) = 2 then
   begin
-    SetLength(Result, l shl 1);
+    SetLength(Result, l);
   end else
   begin
-    SetLength(Result, l);
+    SetLength(Result, l shl 1);
   end;
   pd := PChar(Result);
   pb := p;
@@ -907,6 +908,7 @@ begin
     FChildren := TObjectList.Create(true);
   {$ENDIF}
    FKeyType := mptUnknown;
+   FKeyName := nil;
 end;
 
 constructor TTNTMsgPack.Create(AType: TMsgPackType);
@@ -1227,7 +1229,7 @@ end;
 function TTNTMsgPack.GetAsBoolean: Boolean;
 begin
   if FDataType = mptBoolean then
-    Result := PBoolean(FValue)^
+    Result := PBoolean(FValue)^ = {$IfDef FPC}1{$Else}True{$EndIf}
   else if FDataType = mptString then
     Result := StrToBoolDef(AsString, False)
   else if FDataType = mptInteger then
@@ -1595,7 +1597,7 @@ function TTNTMsgPack.GetKeyAsBoolean: Boolean;
 begin
   case FKeyType of
     mptInteger: Result := KeyAsInt64 <> 0;
-    mptBoolean: Result := PBoolean(FKeyName)^;
+    mptBoolean: Result := PBoolean(FKeyName)^ = {$IfDef FPC}1{$Else}True{$EndIf};
     mptString: TryStrToBool(KeyAsString, Result);
    else
     Result := False;
@@ -1611,6 +1613,8 @@ begin
     mptBoolean: Result := Integer(KeyAsBoolean);
     mptString: TryStrToFloat(KeyAsString, Result);
     mptNull, mptUnknown, mptBinary, mptArray: Result := 0;
+   else
+    Result := 0;
   end;
 end;
 
@@ -1623,6 +1627,8 @@ begin
     mptBoolean: Result := Integer(KeyAsBoolean);
     mptString: Result := Trunc(KeyAsFloat);
     mptNull, mptUnknown, mptBinary, mptArray: Result := 0;
+   else
+    Result := 0;
   end;
 end;
 
@@ -1640,6 +1646,8 @@ begin
     mptBoolean: Result := Integer(KeyAsBoolean);
     mptString: TryStrToFloat(KeyAsString, Result);
     mptNull, mptUnknown, mptBinary, mptArray: Result := 0;
+   else
+    Result := 0;
   end;
 end;
 
@@ -1651,6 +1659,8 @@ begin
     mptBoolean: Result := BoolToStr(KeyAsBoolean);
     mptSingle: Result := FloatToStr(KeyAsSingle);
     mptFloat: Result := FloatToStr(KeyAsFloat);
+   else
+    Result := '';
   end;
 end;
 
@@ -1688,9 +1698,6 @@ begin
   begin
     raise Exception.Create(SCannotAddChild);
   end;
-
-
-
 end;
 
 procedure TTNTMsgPack.InnerAddToChildren(pvDataType: TMsgPackType; obj:
@@ -2253,7 +2260,7 @@ procedure TTNTMsgPack.SetAsBoolean(const Value: Boolean);
 begin
   FDataType := mptBoolean;
   SetLength(FValue, 1);
-  PBoolean(@FValue[0])^ := Value;
+  PBoolean(@FValue[0])^ := {$IfDef FPC}Byte(Value){$ELSE}Value{$ENDIF};
 end;
 
 procedure TTNTMsgPack.SetAsBytes(const Value: TBytes);
@@ -2411,7 +2418,7 @@ end;
 procedure TTNTMsgPack.setName(pvName: Int64);
 begin
   FKeyType := mptInteger;
-  SetLength(FKeyName, SizeOf(Int64));
+  SetLength(FKeyName, SizeOf(pvName));
   PInt64(@FKeyName[0])^ := pvName;
 end;
 
@@ -2497,10 +2504,14 @@ end;
 
 
 procedure DumpObjMsgPack(AObj: TTNTMsgPack; Ident: Word; ParentName: String);
-var i: Integer;
+var i, k: Integer;
+    ObjName: String;
 begin
-  if AObj.Name <> '' then
-   Write(' ':Ident*2, 'Object=', AObj.DataType.ToString, ' Name=', AObj.Name)
+ if Assigned(AObj) then
+ begin
+  ObjName:= AObj.Name;
+  if ObjName <> '' then
+   Write(' ':Ident*2, 'Object=', AObj.DataType.ToString, ' Name=', ObjName)
  else
    Write(' ':Ident*2, 'Object=', AObj.DataType.ToString);
   if AObj.DataType in [mptArray, mptMap] then
@@ -2509,8 +2520,9 @@ begin
      Write(' <empty>', #13#10)
     else
      Write(' Count:', AObj.Count, #13#10);
-   for I := 0 to AObj.Count - 1 do
-    DumpObjMsgPack(AObj.Items[i], Ident + 1, AObj.Name);
+   k := AObj.Count;
+   for I := 0 to k - 1 do
+    DumpObjMsgPack(AObj.Items[i], Ident + 1, ObjName);
   end else
   if AObj.DataType = mptInteger then
     Write(' Value=0x', IntToHex(AObj.AsInteger, 8), #13#10)
@@ -2518,6 +2530,7 @@ begin
     Write(' Value=',AObj.AsString, #13#10);
   if Ident = 0 then
    Writeln('/*************************************************/');
+ end;
 end;
 
 

@@ -1,10 +1,6 @@
 ﻿unit Tarantool.Utils;
 
-{$IFDEF FPC}
-        {$MODESWITCH ADVANCEDRECORDS}
-        {$MODESWITCH TYPEHELPERS}
-{$ENDIF}
-
+{$I Tarantool.Options.inc}
 
 interface
 
@@ -36,10 +32,8 @@ function GetDynArrayNextInfo(typeInfo: PTypeInfo): PTypeInfo;
 
 {$IfDef FPC}
 type
-
     { TGUIDHelperSub }
-
-    TGUIDHelperSub = record helper(TGuidHelper) for TGuid
+    TGUIDHelperSub = record helper for TGuid
       class function Empty: TGUID; static;
     end;
 {$EndIf}

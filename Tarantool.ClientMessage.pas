@@ -1,5 +1,5 @@
 unit Tarantool.ClientMessage;
-
+{$I Tarantool.Options.inc}
 interface
 
 uses Tarantool.Interfaces;

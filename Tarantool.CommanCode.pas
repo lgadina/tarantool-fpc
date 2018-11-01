@@ -1,5 +1,5 @@
 unit Tarantool.CommanCode;
-
+{$I Tarantool.Options.inc}
 interface
 
 const

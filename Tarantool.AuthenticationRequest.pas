@@ -1,5 +1,5 @@
 unit Tarantool.AuthenticationRequest;
-
+{$I Tarantool.Options.inc}
 interface
 
 uses

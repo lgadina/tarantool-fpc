@@ -1,4 +1,5 @@
 ﻿unit Tarantool.Interfaces;
+{$I Tarantool.Options.inc}
 
 interface
 
@@ -27,6 +28,7 @@ type
   ITNTTuple = interface;
   ITNTUpdateDefinition = interface;
   ITNTSpace = interface;
+  ITNTConnectionPool = interface;
   /// <summary> Интерфейс к сырым данным Tarantool
   ///  </summary>
   ITNTPacker = interface
@@ -48,32 +50,32 @@ type
     function GetAsBytes: TBytes;
     procedure SetAsBytes(const Value: TBytes);
 
-    function Pack(const AKey: Integer; AValue: Integer): ITNTPackerMap; overload;
+    function Pack(const AKey: Int64; AValue: Integer): ITNTPackerMap; overload;
     function Pack(const AKey: String; AValue: Integer): ITNTPackerMap; overload;
-    function Pack(const AKey: Integer; AValue: string): ITNTPackerMap; overload;
+    function Pack(const AKey: Int64; AValue: string): ITNTPackerMap; overload;
     function Pack(const AKey: String; AValue: string): ITNTPackerMap; overload;
-    function Pack(const AKey: Integer; AValue: TBytes): ITNTPackerMap; overload;
+    function Pack(const AKey: Int64; AValue: TBytes): ITNTPackerMap; overload;
     function Pack(const AKey: String; AValue: TBytes): ITNTPackerMap; overload;
-    function PackMap(const AKey: Integer): ITNTPackerMap; overload;
+    function PackMap(const AKey: Int64): ITNTPackerMap; overload;
     function PackMap(const AKey: String): ITNTPackerMap; overload;
     function PackArray(const AKey: string): ITNTPackerArray; overload;
-    function PackArray(const AKey: integer): ITNTPackerArray; overload;
+    function PackArray(const AKey: Int64): ITNTPackerArray; overload;
     function Count: Integer;
     function Name(const Index: Integer): String;
     function DataType(const Index: Integer): TMsgPackType;
-    function IsExist(const AKey: Integer): Boolean; overload;
+    function IsExist(const AKey: Int64): Boolean; overload;
     function IsExist(const AKey: String): Boolean; overload;
 
-    function UnpackArray(const AKey: Integer): ITNTPackerArray; overload;
+    function UnpackArray(const AKey: Int64): ITNTPackerArray; overload;
     function UnpackArray(const AKey: String): ITNTPackerArray; overload;
-    function UnpackMap(const AKey: Integer): ITNTPackerMap; overload;
+    function UnpackMap(const AKey: Int64): ITNTPackerMap; overload;
     function UnpackMap(const AKey: String): ITNTPackerMap; overload;
-    function UnpackInteger(const AKey: Integer): Integer; overload;
-    function UnpackString(const AKey: Integer): String; overload;
+    function UnpackInteger(const AKey: Int64): Integer; overload;
+    function UnpackString(const AKey: Int64): String; overload;
     function UnpackInteger(const AKey: String): Integer; overload;
     function UnpackString(const AKey: String): String; overload;
     function UnpackVariant(const AKey: string): Variant; overload;
-    function UnpackVariant(const AKey: Integer): Variant; overload;
+    function UnpackVariant(const AKey: Int64): Variant; overload;
 
     property AsBytes: TBytes read GetAsBytes write SetAsBytes;
   end;
@@ -118,8 +120,8 @@ type
     procedure SetPort(const Value: integer);
     procedure SetUserName(const Value: string);
     procedure SetUseSSL(const Value: Boolean);
-    function GetFromPool: boolean;
-    procedure SetFromPool(const Value: boolean);
+    function GetPool: ITNTConnectionPool;
+    procedure SetPool(const Value: ITNTConnectionPool);
 
     function ReadFromTarantool(AResponseGuid: TGUID; ASpace: ITNTSpace): ITNTResponce;
     procedure WriteToTarantool(ACommand: ITNTCommand);
@@ -134,9 +136,9 @@ type
     property UseSSL: Boolean read GetUseSSL write SetUseSSL;
     property IsReady: boolean read GetIsReady;
     property Version: String read GetVersion;
-    property FromPool: boolean read GetFromPool write SetFromPool;
     function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
     function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
+    property Pool: ITNTConnectionPool read GetPool Write SetPool;
   end;
 
   ITNTConnectionPool = interface
@@ -184,6 +186,7 @@ type
     function GetCode: integer;
     function GetRequestId: Int64;
     function GetSpace: ITNTSpace;
+    procedure Close;
 
     property Code: integer read GetCode;
     property RequestId: Int64 read GetRequestId;
@@ -274,8 +277,12 @@ type
    property RowCount: Integer read GetRowCount;
    property Row[Index: Integer]: Variant read GetRow;
    function FieldByName(ARow: Integer; AFieldName: String): Variant;
+   function AddRow: Integer;
+   procedure SetFieldValue(ARow: Integer; AFieldName: String; AValue: Variant);
    property ItemCount[ARowIndex: Integer]: Integer read GetItemCount;
   end;
+
+  TTNTTupleArray = array of ITNTTuple;
 
 
   ITNTSelect = interface(ITNTCommand)
@@ -329,6 +336,13 @@ type
     function Select(AIndexId: Integer; AKeys: Variant; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
     function Select(AIndexId: Integer; AKeys: Variant; ALimit: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
     function Select(AIndexId: Integer; AKeys: Variant; ALimit: Integer; AOffset: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
+
+    function Select(AIndexName: string; AKeys: Variant; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
+    function Select(AIndexName: string; AKeys: Variant; ALimit: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
+    function Select(AIndexName: string; AKeys: Variant; ALimit: Integer; AOffset: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
+    function Select(AIndexName: String; AKeys: array of const; ALimit: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
+    function Select(AIndexName: String; AKeys: array of const; ALimit: Integer; AOffset: Integer; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple; overload;
+
     function SelectAll: ITNTTuple;
 
     property Indexes: ITNTIndexList read GetIndexes;
@@ -338,10 +352,14 @@ type
     property Name: string read GetName write SetName;
     property Engine: String read GetEngine write SetEngine;
     property FieldCount: Int64 read GetFieldCount;
+
     function Insert(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple; overload;
     function Insert(AValues: Variant): ITNTTuple; overload;
+    function Insert(AValues: array of const): ITNTTuple; overload;
+
     function Replace(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple; overload;
     function Replace(AValues: Variant): ITNTTuple; overload;
+
     function Update(AIndexId: Integer; AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
     function UpdateDefinition: ITNTUpdateDefinition;
     function Upsert(AValues: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;

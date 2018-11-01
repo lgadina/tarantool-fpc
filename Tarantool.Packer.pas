@@ -39,38 +39,38 @@ type
   public
     constructor Create(AMsgPackObject: TTNTMsgPack);
     destructor Destroy; override;
-    function Pack(const AKey: Integer; AValue: Integer): ITNTPackerMap; overload;
+    function Pack(const AKey: Int64; AValue: Integer): ITNTPackerMap; overload;
     function Pack(const AKey: String; AValue: Integer): ITNTPackerMap; overload;
-    function Pack(const AKey: Integer; AValue: string): ITNTPackerMap; overload;
+    function Pack(const AKey: Int64; AValue: string): ITNTPackerMap; overload;
     function Pack(const AKey: String; AValue: string): ITNTPackerMap; overload;
-    function Pack(const AKey: Integer; AValue: TBytes): ITNTPackerMap; overload;
+    function Pack(const AKey: Int64; AValue: TBytes): ITNTPackerMap; overload;
     function Pack(const AKey: String; AValue: TBytes): ITNTPackerMap; overload;
-    function Pack(const AKey: Integer; AValue: Boolean): ITNTPackerMap; overload;
+    function Pack(const AKey: Int64; AValue: Boolean): ITNTPackerMap; overload;
     function Pack(const AKey: String; AValue: Boolean): ITNTPackerMap; overload;
 
-    function PackMap(const AKey: Integer): ITNTPackerMap; overload;
+    function PackMap(const AKey: Int64): ITNTPackerMap; overload;
     function PackMap(const AKey: String): ITNTPackerMap; overload;
     function PackArray(const AKey: string): ITNTPackerArray; overload;
-    function PackArray(const AKey: integer): ITNTPackerArray; overload;
+    function PackArray(const AKey: Int64): ITNTPackerArray; overload;
     function Count: Integer;
     function Name(const Index: Integer): String;
     function DataType(const Index: Integer): TMsgPackType;
-    function IsExist(const AKey: Integer): Boolean; overload;
+    function IsExist(const AKey: Int64): Boolean; overload;
     function IsExist(const AKey: String): Boolean; overload;
-    function UnpackArray(const AKey: Integer): ITNTPackerArray; overload;
+    function UnpackArray(const AKey: Int64): ITNTPackerArray; overload;
     function UnpackArray(const AKey: String): ITNTPackerArray; overload;
-    function UnpackMap(const AKey: Integer): ITNTPackerMap; overload;
+    function UnpackMap(const AKey: Int64): ITNTPackerMap; overload;
     function UnpackMap(const AKey: String): ITNTPackerMap; overload;
-    function UnpackInteger(const AKey: Integer): Integer; overload;
-    function UnpackString(const AKey: Integer): String; overload;
+    function UnpackInteger(const AKey: Int64): Integer; overload;
+    function UnpackString(const AKey: Int64): String; overload;
     function UnpackInteger(const AKey: String): Integer; overload;
     function UnpackString(const AKey: String): String; overload;
-    function UnpackBoolean(const AKey: Integer): Boolean; overload;
+    function UnpackBoolean(const AKey: Int64): Boolean; overload;
     function UnpackBoolean(const AKey: String): Boolean; overload;
-    function UnpackBytes(const AKey: Integer): TBytes; overload;
+    function UnpackBytes(const AKey: Int64): TBytes; overload;
     function UnpackBytes(const AKey: String): TBytes; overload;
     function UnpackVariant(const AKey: string): Variant; overload;
-    function UnpackVariant(const AKey: Integer): Variant; overload;
+    function UnpackVariant(const AKey: Int64): Variant; overload;
 
     property AsBytes: TBytes read GetAsBytes write SetAsBytes;
   end;
@@ -132,16 +132,18 @@ end;
 
 procedure TTNTPacker.Clear;
 var Obj: TTNTMsgPack;
+    i: Integer;
 begin
- for Obj in FMsgPackObjects do
-  if Assigned(Obj) then
-    Obj.Free;
- FillChar(FMsgPackObjects, Length(FMsgPackObjects), 0);
+ for i := 0 to Length(FMsgPackObjects) - 1 do
+  if Assigned(FMsgPackObjects[i]) then
+    FreeAndNil(FMsgPackObjects[i])
+   else
+    FMsgPackObjects[i] := nil;
 end;
 
 constructor TTNTPacker.Create;
 begin
-  FillChar(FMsgPackObjects[0], Length(FMsgPackObjects), 0);
+  Clear;
 end;
 
 
@@ -183,6 +185,7 @@ begin
   Move(outBuf[0], Result[0], Length(outBuf));
  end else
   SetLength(Result, 0);
+
 end;
 
 function TTNTPacker.Header: ITNTPackerMap;
@@ -253,7 +256,7 @@ end;
 
 destructor TTNTPackMap.Destroy;
 begin
-  FObj := nil;
+  //FObj := nil;
   inherited;
 end;
 
@@ -262,7 +265,7 @@ begin
  Result := FObj.EncodeToBytes;
 end;
 
-function TTNTPackMap.IsExist(const AKey: Integer): Boolean;
+function TTNTPackMap.IsExist(const AKey: Int64): Boolean;
 begin
  Result := FObj.OO[AKey] <> nil;
 end;
@@ -277,7 +280,7 @@ begin
  Result := FObj.Items[Index].Name;
 end;
 
-function TTNTPackMap.Pack(const AKey: Integer; AValue: TBytes): ITNTPackerMap;
+function TTNTPackMap.Pack(const AKey: Int64; AValue: TBytes): ITNTPackerMap;
 begin
  FObj.OO[AKey] := TTNTMsgPack.Create(mptBinary);
  FObj.OO[AKey].AsBytes := AValue;
@@ -299,7 +302,7 @@ begin
  Result := TTNTPackArray.Create(Obj);
 end;
 
-function TTNTPackMap.PackArray(const AKey: integer): ITNTPackerArray;
+function TTNTPackMap.PackArray(const AKey: Int64): ITNTPackerArray;
 var Obj: TTNTMsgPack;
 begin
  Obj := TTNTMsgPack.Create(mptArray);
@@ -307,7 +310,7 @@ begin
  Result := TTNTPackArray.Create(Obj);
 end;
 
-function TTNTPackMap.PackMap(const AKey: Integer): ITNTPackerMap;
+function TTNTPackMap.PackMap(const AKey: Int64): ITNTPackerMap;
 var Obj: TTNTMsgPack;
 begin
  Obj := TTNTMsgPack.Create(mptMap);
@@ -328,7 +331,7 @@ begin
  FObj.DecodeFromBytes(Value);
 end;
 
-function TTNTPackMap.UnpackArray(const AKey: Integer): ITNTPackerArray;
+function TTNTPackMap.UnpackArray(const AKey: Int64): ITNTPackerArray;
 var O: TTNTMsgPack;
 begin
  Result := nil;
@@ -346,7 +349,7 @@ begin
    Result := TTNTPackArray.Create(O);
 end;
 
-function TTNTPackMap.UnpackBoolean(const AKey: Integer): Boolean;
+function TTNTPackMap.UnpackBoolean(const AKey: Int64): Boolean;
 begin
  Result := FObj.BB[AKey];
 end;
@@ -356,7 +359,7 @@ begin
  Result := FObj.B[AKey];
 end;
 
-function TTNTPackMap.UnpackBytes(const AKey: Integer): TBytes;
+function TTNTPackMap.UnpackBytes(const AKey: Int64): TBytes;
 begin
  Result := FObj.OO[AKey].AsBytes
 end;
@@ -371,7 +374,7 @@ begin
  Result :=  FObj.I[AKey];
 end;
 
-function TTNTPackMap.UnpackMap(const AKey: Integer): ITNTPackerMap;
+function TTNTPackMap.UnpackMap(const AKey: Int64): ITNTPackerMap;
 var O: TTNTMsgPack;
 begin
  Result := nil;
@@ -389,17 +392,17 @@ begin
    Result := TTNTPackMap.Create(O);
 end;
 
-function TTNTPackMap.UnpackInteger(const AKey: Integer): Integer;
+function TTNTPackMap.UnpackInteger(const AKey: Int64): Integer;
 begin
  Result := FObj.II[AKey];
 end;
 
-function TTNTPackMap.UnpackString(const AKey: Integer): String;
+function TTNTPackMap.UnpackString(const AKey: Int64): String;
 begin
  Result := FObj.SS[AKey];
 end;
 
-function TTNTPackMap.Pack(const AKey: Integer; AValue: string): ITNTPackerMap;
+function TTNTPackMap.Pack(const AKey: Int64; AValue: string): ITNTPackerMap;
 begin
  FObj.SS[AKey] := AValue;
  Result := Self;
@@ -411,7 +414,7 @@ begin
  Result := Self;
 end;
 
-function TTNTPackMap.Pack(const AKey: Integer; AValue: Integer): ITNTPackerMap;
+function TTNTPackMap.Pack(const AKey: Int64; AValue: Integer): ITNTPackerMap;
 begin
  FObj.II[AKey] := AValue;
  Result := Self;
@@ -433,12 +436,12 @@ begin
  Result := FObj.O[AKey].AsVariant
 end;
 
-function TTNTPackMap.UnpackVariant(const AKey: Integer): Variant;
+function TTNTPackMap.UnpackVariant(const AKey: Int64): Variant;
 begin
  Result := FObj.OO[AKey].AsVariant
 end;
 
-function TTNTPackMap.Pack(const AKey: Integer; AValue: Boolean): ITNTPackerMap;
+function TTNTPackMap.Pack(const AKey: Int64; AValue: Boolean): ITNTPackerMap;
 begin
  FObj.OO[AKey] := TTNTMsgPack.Create(mptBoolean);
  FObj.OO[AKey].AsBoolean := AValue;
@@ -471,7 +474,7 @@ end;
 
 destructor TTNTPackArray.Destroy;
 begin
-  FObj := nil;
+  //FObj := nil;
   inherited;
 end;
 

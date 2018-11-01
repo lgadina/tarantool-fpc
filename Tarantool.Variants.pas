@@ -121,26 +121,48 @@ type
       const AVarType: TVarType); override;
   end;
 
+type
+  ITNTSerializer = interface
+  ['{6E2C36BB-B777-4D7D-9465-78321FF5AE37}']
+    function ToVariant(AObject: TObject; APropInfo: PPropInfo): Variant;
+    procedure ToObject(AObject: TObject; APropInfo: PPropInfo; AValue: Variant);
+  end;
+
+  TTNTCustomSerializer = class(TInterfacedObject, ITNTSerializer)
+  protected
+    function ToVariant(AObject: TObject; APropInfo: PPropInfo): Variant; virtual; abstract;
+    procedure ToObject(AObject: TObject; APropInfo: PPropInfo; AValue: Variant); virtual; abstract;
+  end;
+
+  TTNTCustomSerializerClass = class of TTNTCustomSerializer;
 var
   TNTVariantType: TInvokeableVariantType;
 
 function TNTVariant: Variant; overload;
+function TNTVariant(const AValues: array of const): Variant; overload;
 function TNTVariant(const MsgPack: TTNTMsgPack): Variant; overload;
 function TNTVariant(const AObject: TObject): Variant; overload;
+function TNTVariant(const AInterface: IUnknown): Variant; overload;
 function TNTVariant(const AArray: ITNTPackerArray): Variant; overload;
 function TNTVariant(const AMap: ITNTPackerMap): Variant; overload;
+function TNTMsgPack(const TNTVariant: Variant): TTNTMsgPack;
+
 function TNTVariantData(const TNTVariant: Variant): PTNTVariantData;
 function TNTObject(const TNTVariant: Variant; AClass: TClass): TObject;
+function TNTInterface(const TNTVariant: Variant; AClass: TClass): IUnknown;
 function TNTVariantDataSafe(const TNTVariant: variant;
   ExpectedKind: TTNTVariantKind=tvkUndefined): PTNTVariantData;
 
 procedure SetInstanceProp(Instance: TObject; PropInfo: PPropInfo;
   const Value: variant);
 
+procedure TNTRegisterCustomSerializer(ATypeInfo: PTypeInfo; AClass: TTNTCustomSerializerClass);
+
 implementation
 
 uses Tarantool.UserKeys
 , Tarantool.Utils
+, Generics.Collections
 {$IfNDef FPC}
 , Soap.InvokeRegistry
 , System.StrUtils
@@ -152,6 +174,15 @@ type
   TTNTParserKind = (
     kNone, kNull, kFalse, kTrue, kString, kInteger, kFloat, kObject, kArray);
 
+var
+  FCustomSerializer: TDictionary<PTypeInfo, TTNTCustomSerializerClass> = nil;
+
+function GetCustomSerializer(ATypeInfo: PTypeInfo): ITNTSerializer;
+begin
+  Result := nil;
+  if FCustomSerializer.ContainsKey(ATypeInfo) then
+    Result := FCustomSerializer[ATypeInfo].Create;
+end;
 
 procedure TTNTVariantData.Init;
 begin
@@ -238,40 +269,40 @@ begin
 end;
 
 
-function ParseIMap(APackerMap: ITNTPackerMap): TTNTVariantData; forward;
+function ParseIMap(APackerMap: ITNTPackerMap): Variant; forward;
 
-function ParseIArray(APackerArray: ITNTPackerArray): TTNTVariantData;
+function ParseIArray(APackerArray: ITNTPackerArray): Variant;
 var i: Integer;
     val: Variant;
 begin
-  Result.Init;
+  Result := TNTVariant;
   for I := 0 to APackerArray.Count - 1 do
     begin
      case APackerArray.DataType(I) of
-      mptMap: Val := Variant(ParseIMap(APackerArray.UnpackMap(I)));
-      mptArray: Val := Variant(ParseIArray(APackerArray.UnpackArray(I)));
+      mptMap: Val := ParseIMap(APackerArray.UnpackMap(I));
+      mptArray: Val := ParseIArray(APackerArray.UnpackArray(I));
       else
        val := APackerArray.UnpackVariant(i);
      end;
-      Result.AddValue(Val);
+      TNTVariantDataSafe(Result)^.AddValue(Val);
     end;
 end;
 
 
-function ParseIMap(APackerMap: ITNTPackerMap): TTNTVariantData;
+function ParseIMap(APackerMap: ITNTPackerMap): Variant;
 var i: Integer;
     val: Variant;
 begin
-  Result.Init;
+  Result := TNTVariant;
   for I := 0 to APackerMap.Count - 1 do
     begin
      case APackerMap.DataType(I) of
-      mptMap: Val := Variant(ParseIMap(APackerMap.UnpackMap(APackerMap.Name(I))));
-      mptArray: Val := Variant(ParseIArray(APackerMap.UnpackArray(APackerMap.Name(I))));
+      mptMap: Val := ParseIMap(APackerMap.UnpackMap(APackerMap.Name(I)));
+      mptArray: Val := ParseIArray(APackerMap.UnpackArray(APackerMap.Name(I)));
       else
        val := APackerMap.UnpackVariant(APackerMap.Name(I));
      end;
-      Result.AddNameValue(APackerMap.Name(I), Val);
+      TNTVariantDataSafe(Result)^.AddNameValue(APackerMap.Name(I), Val);
     end;
 end;
 
@@ -283,8 +314,8 @@ begin
    case APacker.DataType(I) of
      mptNull: AddValue(Null);
      mptUnknown: AddValue(Unassigned);
-     mptMap: AddValue(Variant(ParseIMap(APacker.UnpackMap(i))));
-     mptArray: AddValue(variant(ParseIArray(APacker.UnpackArray(i))));
+     mptMap: AddValue(ParseIMap(APacker.UnpackMap(i)));
+     mptArray: AddValue(ParseIArray(APacker.UnpackArray(i)));
      mptString: AddValue(APacker.UnpackString(i));
      mptInteger: AddValue(APacker.UnpackInteger(i));
      mptBoolean: AddValue(APacker.UnpackBoolean(i));
@@ -293,7 +324,7 @@ end;
 
 procedure TTNTVariantData.InitFrom(const APacker: ITNTPackerMap);
 begin
- Self := ParseIMap(APacker);
+ Self := TNTVariantData(ParseIMap(APacker))^;
 end;
 
 
@@ -318,7 +349,7 @@ begin
     VKind := tvkObject else
     if VKind<>tvkObject then
       raise ETNTVariantException.CreateFmt('AddNameValue(%s) over array',[aName]);
-  if VCount<=length(Values) then begin
+  if VCount>=length(Values) then begin
     SetLength(Values,VCount+VCount shr 3+32);
     SetLength(Names,VCount+VCount shr 3+32);
   end;
@@ -329,7 +360,7 @@ end;
 
 function TTNTVariantData.AddTNTVariant: Variant;
 begin
- TTNTVariantData(Result).Init;
+ Result := TNTVariant;
  AddValue(Result);
 end;
 
@@ -339,7 +370,7 @@ begin
     VKind := tvkArray else
     if VKind<>tvkArray then
       raise ETNTVariantException.Create('AddValue() over object');
-  if VCount<=length(Values) then
+  if VCount>=length(Values) then
     SetLength(Values,VCount+VCount shr 3+32);
   Values[VCount] := aValue;
   inc(VCount);
@@ -440,8 +471,14 @@ begin
 end;
 
 procedure TTNTVariantData.PackToMessage(const APacker: ITNTPackerArray);
+var MsgPack: TTNTMsgPack;
 begin
- APacker.AsBytes := ToMsgPack.EncodeToBytes;
+ MsgPack := ToMsgPack;
+ try
+   APacker.AsBytes := MsgPack.EncodeToBytes;
+ finally
+  MsgPack.Free;
+ end;
 end;
 
 procedure TTNTVariantData.SetPath(const aPath: string; const aValue: variant);
@@ -517,7 +554,7 @@ begin
       vt := VarType(Values[I]);
       if vt = TNTVariantType.VarType then
        begin
-         Result.O[Names[I]] := TTNTVariantData(Values[I]).ToMsgPack;
+         Result.O[Names[I]] := TNTVariantData(Values[I])^.ToMsgPack;
        end else
         Result.O[Names[I]] := MPO(Values[i]);
     end;
@@ -531,7 +568,7 @@ begin
       vt := VarType(Values[I]);
       if vt = TNTVariantType.VarType then
        begin
-         Result.Add(TTNTVariantData(Values[I]).ToMsgPack);
+         Result.Add(TNTVariantDataSafe(Values[I])^.ToMsgPack);
        end else
         Result.AddArrayChild.AsVariant := Values[i];
     end;
@@ -551,7 +588,7 @@ begin
    begin
     for i := 0 to ASize - 1 do
     begin
-     PTObject(AData)^ := TNTObject(TTNTVariantData(AValue).Item[i], GetTypeData(AInfo)^.ClassType);
+     PTObject(AData)^ := TNTObject(TNTVariantDataSafe(AValue)^.Item[i], GetTypeData(AInfo)^.ClassType);
      AData := Pointer(NativeUInt(AData) + SizeOf(Pointer));
      Inc(CurElement);
     end;
@@ -560,7 +597,7 @@ begin
   begin
    for i := 0 to ASize - 1 do
    begin
-    Variant(PVarData(AData)^) := TTNTVariantData(AValue).Item[i];
+    Variant(PVarData(AData)^) := TNTVariantDataSafe(AValue)^.Item[i];
     AData := Pointer(NativeUInt(AData) + TypeData^.elSize);
    end;
   end else
@@ -568,7 +605,7 @@ begin
     TypeData := GetTypeData(AInfo);
     for i := 0 to ASize - 1 do
       begin
-        v := TTNTVariantData(AValue).Item[i];
+        v := TNTVariantDataSafe(AValue)^.Item[i];
         case AInfo^.Kind of
           tkInteger: case TypeData^.OrdType of
                       otSByte, otUByte:  PByte(AData)^ := v;
@@ -607,7 +644,7 @@ begin
   if Dims > 1 then
   begin
     LDyn := Pointer(AData^);
-    Len := TTNTVariantData(AValue).Count;
+    Len := TNTVariantDataSafe(AValue)^.Count;
     DynArraySetLength(LDyn, ArrayInfo, 1, @Len);
     Result := LDyn;
     PElem := LDyn;
@@ -615,7 +652,7 @@ begin
     CurElement := 0;
     for i := 0 to Len -1 do
       begin
-       PChild := ConvertVariantToNativeArrayElem(GetDynArrayNextInfo(ArrayInfo), ElemInfo, Dims, CurDim, PElem, TTNTVariantData(AValue).Values[I]);
+       PChild := ConvertVariantToNativeArrayElem(GetDynArrayNextInfo(ArrayInfo), ElemInfo, Dims, CurDim, PElem, TNTVariantDataSafe(AValue)^.Values[I]);
        Pointer(PElem^) := PChild;
        PElem := Pointer(NativeUInt(PElem) + SizeOf(pointer));
       end;
@@ -623,7 +660,7 @@ begin
   begin
     LDyn := Pointer(AData^);
 
-    Len := TTNTVariantData(AValue).Count;
+    Len := TNTVariantDataSafe(AValue)^.Count;
     DynArraySetLength(LDyn, ArrayInfo, 1, @Len);
     Result := LDyn;
     PElem := LDyn;
@@ -650,11 +687,15 @@ var
     obj: TObject;
     ArrayPtr: Pointer;
     PropType: PTypeInfo;
+    CustomSerializer: ITNTSerializer;
 begin
   if (PropInfo<>nil) and (Instance<>nil) then
   begin
     PropType := {$IfDef FPC}PropInfo^.PropType{$Else}PropInfo^.PropType^{$EndIf};
-
+     CustomSerializer := GetCustomSerializer(PropInfo^.PropType);
+     if CustomSerializer <> nil then
+      CustomSerializer.ToObject(Instance, PropInfo, Value)
+     else
       case PropInfo^.PropType^.Kind of
       tkInt64{$ifdef FPC}, tkQWord{$endif}:
         if TVarData(Value).VType=varInt64 then
@@ -680,12 +721,10 @@ begin
         if TVarData(Value).VType<=varNull then
           SetWideStrProp(Instance,PropInfo,'') else
           SetWideStrProp(Instance,PropInfo,Value);
-      {$ifdef UNICODE}
       tkUString:
         if TVarData(Value).VType<=varNull then
           SetUnicodeStrProp(Instance,PropInfo,'') else
           SetUnicodeStrProp(Instance,PropInfo,Value);
-      {$endif UNICODE}
       {$endif NEXTGEN}
       tkFloat:
           SetFloatProp(Instance,PropInfo,Value);
@@ -696,8 +735,13 @@ begin
                     ArrayPtr := ConvertVariantToNativeArray(@ArrayPtr, PropType, Value);
                     SetDynArrayProp(Instance, PropInfo, ArrayPtr);
                   end;
-      tkClass: begin
-        obj := GetObjectProp(Instance, PropInfo);
+      tkClass, tkInterface: begin
+
+        if PropInfo^.PropType^.Kind = tkInterface then
+          Obj := GetInterfaceProp(Instance, PropInfo) as TObject
+        else
+          obj := GetObjectProp(Instance, PropInfo);
+
         if TVarData(Value).VType>varNull then
           if obj=nil then begin
             obj := TNTObject(Value, GetTypeData(PropType)^.ClassType);
@@ -797,25 +841,63 @@ end;
 
 function TNTVariant: Variant;
 begin
+  VarClear(Result);
   TTNTVariantData(Result).Init;
 end;
 
+function TNTVariant(const AValues: array of const): Variant;
+var v: variant;
+    i: integer;
+begin
+ v := TNTVariant;
+ for i := low(AValues) to High(AValues) do
+  begin
+    case TVarRec(AValues[i]).VType of
+     vtInteger: TNTVariantDataSafe(v)^.AddValue(TVarRec(AValues[i]).VInteger);
+     vtBoolean: TNTVariantDataSafe(v)^.AddValue(TVarRec(AValues[i]).VBoolean);
+     vtChar: TNTVariantDataSafe(v)^.AddValue(TVarRec(AValues[i]).VChar);
+     vtExtended: TNTVariantDataSafe(v)^.AddValue(TVarRec(AValues[i]).VExtended^);
+     vtString: TNTVariantDataSafe(v)^.AddValue(String(TVarRec(AValues[i]).VString^));
+     vtPointer: ;
+     vtPChar: ;
+     vtObject: TNTVariantDataSafe(v)^.AddValue(TNTVariant(TVarRec(AValues[i]).VObject));
+     vtClass: ;
+     vtWideChar: ;
+     vtPWideChar: ;
+     vtAnsiString: TNTVariantDataSafe(v)^.AddValue(AnsiString(TVarRec(AValues[i]).VAnsiString));
+     vtVariant: TNTVariantDataSafe(v)^.AddValue(TVarRec(AValues[i]).VVariant^);
+     vtInterface: TNTVariantDataSafe(v)^.AddValue(TNTVariant(IUnknown(TVarRec(AValues[i]).VInterface)));
+     vtInt64: TNTVariantDataSafe(v)^.AddValue(TVarRec(AValues[i]).VInt64^);
+     vtQWord: TNTVariantDataSafe(v)^.AddValue(TVarRec(AValues[i]).VQWord^);
+     vtUnicodeString: TNTVariantDataSafe(v)^.AddValue(UnicodeString(TVarRec(AValues[i]).VUnicodeString));
+    end;
+  end;
+ Result := v;
+end;
 
 function TNTVariant(const MsgPack: TTNTMsgPack): Variant; overload;
 begin
+  VarClear(Result);
   TTNTVariantData(Result).InitFrom(MsgPack);
 end;
 
 function TNTVariant(const AArray: ITNTPackerArray): Variant; overload;
 begin
+ VarClear(Result);
   TTNTVariantData(Result).InitFrom(AArray);
 end;
 
 function TNTVariant(const AMap: ITNTPackerMap): Variant; overload;
 begin
+ VarClear(Result);
   TTNTVariantData(Result).InitFrom(AMap);
 end;
 
+
+function TNTMsgPack(const TNTVariant: Variant): TTNTMsgPack;
+begin
+ Result := TNTVariantData(TNTVariant)^.ToMsgPack;
+end;
 
 function TNTVariantData(const TNTVariant: Variant): PTNTVariantData;
 begin
@@ -983,11 +1065,13 @@ var
   Obj: TObject;
   P: Pointer;
   D: Integer;
+  typ: TTypeKind;
+  CustomSerializer: ITNTSerializer;
 begin
  Result:= Unassigned;
  if Assigned(AObject) then
  begin
-   TTNTVariantData(Result).Init;
+   Result := TNTVariant;
    Pl := nil;
    C := GetPropList(PTypeInfo(AObject.ClassInfo), PL);
    if Assigned(PL) and (C > 0) then
@@ -996,31 +1080,46 @@ begin
        for I := 0 to Pred(C) do
         begin
           PI := PL^[I];
-            case PI^.PropType^.Kind of
-              tkInteger: TTNTVariantData(Result).AddNameValue(pi^.Name, GetOrdProp(AObject, PI));
-              tkInt64: TTNTVariantData(Result).AddNameValue(pi^.Name, GetInt64Prop(AObject, PI));
-              tkString, tkUString: TTNTVariantData(Result).AddNameValue(pi^.Name, GetStrProp(AObject, PI));
+            typ := PI^.PropType^.Kind;
+            CustomSerializer := GetCustomSerializer(PI^.PropType);
+            if CustomSerializer <> nil then
+              TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, CustomSerializer.ToVariant(AObject, PI))
+            else
+            case typ of
+              tkInteger: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetOrdProp(AObject, PI));
+              tkInt64: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetInt64Prop(AObject, PI));
+              tkString: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetStrProp(AObject, PI));
+              tkUString: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetUnicodeStrProp(AObject, PI));
+              {$IfDef FPC}
+              tkAString: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetStrProp(AObject, PI));
+              {$ENDIF}
+              tkWString: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetWideStrProp(AObject, PI));
               tkEnumeration: begin
                 if PI^.PropType^.Name = 'Boolean' then
-                  TTNTVariantData(Result).AddNameValue(pi^.Name, GetOrdProp(AObject, PI) = 1)
+                  TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetOrdProp(AObject, PI) = 1)
                 else
-                  TTNTVariantData(Result).AddNameValue(pi^.Name, GetEnumProp(AObject, PI));
+                  TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetEnumProp(AObject, PI));
 
               end;
-              tkClass: Begin
-                         Obj := GetObjectProp(AObject, PI);
+              tkClass, tkInterface: Begin
+
+                         if typ = tkInterface then
+                           Obj := GetInterfaceProp(AObject, PI) as TObject
+                         else
+                           Obj := GetObjectProp(AObject, PI);
+
                          if Assigned(Obj) then
                          {$IfNDef FPC}
                           if Obj.InheritsFrom(TRemotableXS) then
-                           TTNTVariantData(Result).AddNameValue(pi^.Name, TRemotableXS(Obj).NativeToXS)
+                           TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, TRemotableXS(Obj).NativeToXS)
                           else
                          {$EndIf}
-                           TTNTVariantData(Result).AddNameValue(pi^.Name, TNTVariant(Obj));
+                           TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, TNTVariant(Obj));
                        End;
               tkDynArray: begin
                             P := Pointer(GetDynArrayProp(AObject, PI));
                             if Assigned(P) then
-                              TTNTVariantData(Result).AddNameValue(pi^.Name, DynArrayToTNTVariant(PI^.PropType{$IfNDef FPC}^{$EndIf}, P));
+                              TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, DynArrayToTNTVariant(PI^.PropType{$IfNDef FPC}^{$EndIf}, P));
                           end;
             end;
           end;
@@ -1029,6 +1128,11 @@ begin
      end;
    end;
  end;
+end;
+
+function TNTVariant(const AInterface: IUnknown): Variant; overload;
+begin
+ Result := TNTVariant(AInterface as TObject);
 end;
 
 function TNTObject(const TNTVariant: Variant; AClass: TClass): TObject;
@@ -1044,10 +1148,32 @@ begin
   if VarType(TNTVariant) = TNTVariantType.VarType then
    begin
      Result := AClass.Create;
-     TTNTVariantData(TNTVariant).ToObject(Result);
+     TNTVariantData(TNTVariant)^.ToObject(Result);
    end;
+end;
+
+function TNTInterface(const TNTVariant: Variant; AClass: TClass): IUnknown;
+var Obj: TObject;
+begin
+  Result := nil;
+  Obj:= AClass.Create;
+  TNTVariantData(TNTVariant)^.ToObject(Obj);
+  if Supports(Obj, IUnknown, Result)  then {};
+end;
+
+
+procedure TNTRegisterCustomSerializer(ATypeInfo: PTypeInfo; AClass: TTNTCustomSerializerClass);
+begin
+ if FCustomSerializer = nil then
+   FCustomSerializer := TDictionary<PTypeInfo, TTNTCustomSerializerClass>.Create;
+ if not FCustomSerializer.ContainsKey(ATypeInfo) then
+    FCustomSerializer.Add(ATypeInfo, AClass);
 end;
 
 initialization
   TNTVariantType := TTNTVariant.Create;
+finalization
+  if Assigned(FCustomSerializer) then
+    FreeAndNil(FCustomSerializer);
+  FreeAndNil(TNTVariantType);
 end.
