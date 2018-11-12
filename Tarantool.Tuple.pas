@@ -1,5 +1,5 @@
 unit Tarantool.Tuple;
-
+{$I Tarantool.Options.inc}
 interface
 
 uses
@@ -29,15 +29,18 @@ type
     function GetRowCount: Integer;
     function GetRow(Index: Integer): Variant;
     function GetItemCount(ARowIndex: Integer): Integer;
+    function GetTuple(Index: Integer): ITNTTuple;
   protected
     function NewRow: Variant;
     procedure LoadFields;
     function GetFieldIndex(AFieldName: String): Integer;
   public
     constructor Create(APacker: ITNTPacker; AConnection: ITNTConnection; ASpace: ITNTSpace); override;
+    constructor CreateTuple(ATuple: Variant;  AConnection: ITNTConnection; ASpace: ITNTSpace);
     constructor NewTuple(AConnection: ITNTConnection; ASpace: ITNTSpace); virtual;
     destructor Destroy; override;
     property Values: Variant read GetValues;
+    property Tuple[Index: Integer]: ITNTTuple read GetTuple;
     property RowCount: Integer read GetRowCount;
     property Row[Index: Integer]: Variant read GetRow;
 
@@ -64,6 +67,17 @@ begin
   LoadFields;
 end;
 
+constructor TTNTTuple.CreateTuple(ATuple: Variant; AConnection: ITNTConnection; ASpace: ITNTSpace);
+begin
+  inherited Create(nil, AConnection, ASpace);
+  LoadFields;
+  {$IFDEF FPC}
+   FValues:= ATuple;
+  {$ELSE}
+   VarCopy(FValues, ATuple);
+  {$ENDIF}
+end;
+
 constructor TTNTTuple.NewTuple(AConnection: ITNTConnection; ASpace: ITNTSpace);
 begin
   inherited Create(nil, AConnection, ASpace);
@@ -79,7 +93,8 @@ end;
 
 destructor TTNTTuple.Destroy;
 begin
-  FValues := Unassigned;
+  VarClear(FValues);
+  FValues := Null;
   SetLength(FFields, 0);
   inherited Destroy;
 end;
@@ -118,6 +133,11 @@ end;
 function TTNTTuple.GetRowCount: Integer;
 begin
  Result := TTNTVariantData(FValues).Count;
+end;
+
+function TTNTTuple.GetTuple(Index: Integer): ITNTTuple;
+begin
+ Result := TTNTTuple.CreateTuple(Row[Index], Connection, Space);
 end;
 
 function TTNTTuple.GetValues: Variant;

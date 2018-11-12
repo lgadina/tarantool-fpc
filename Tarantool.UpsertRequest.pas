@@ -76,7 +76,7 @@ begin
     APacker.Body.PackArray(tnTuple).Pack(FValues);
   FUpdateDef.PackToMessage(APacker.Body.PackArray(tnOps));
  end else
-  raise ETarantoolException.Create('Update operation not defined');
+  raise ETarantoolInvalidUpdateOperation.Create(4, 'Update operation not defined');
 end;
 
 procedure TTNTUpsert.SetTuple(const Value: TBytes);

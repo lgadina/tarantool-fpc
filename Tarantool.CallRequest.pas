@@ -3,7 +3,8 @@ unit Tarantool.CallRequest;
 interface
 uses Tarantool.Interfaces;
 
-function NewCall(AFunctionName: String; AArguments: Variant): ITNTCall;
+function NewCall(AFunctionName: String; AArguments: Variant): ITNTCall; overload;
+function NewCall(AFunctionName: String; AArguments: array of const): ITNTCall; overload;
 
 implementation
 
@@ -76,6 +77,11 @@ begin
   Result := TTNTCall.Create(tncCall);
   Result.FunctionName := AFunctionName;
   Result.Arguments := AArguments;
+end;
+
+function NewCall(AFunctionName: String; AArguments: array of const): ITNTCall; overload;
+begin
+  Result := NewCall(AFunctionName, TNTVariant(AArguments));
 end;
 
 end.

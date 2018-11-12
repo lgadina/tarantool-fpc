@@ -99,22 +99,32 @@ type
     function SelectAll: ITNTTuple;
     function Insert(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple; overload;
     function Insert(AValues: Variant): ITNTTuple; overload;
-    function Insert(AValues: array of const): ITNTTuple; overload;
+    function Insert(AValues: array of const; ANeedAnswer: boolean = true): ITNTTuple; overload;
 
     function Replace(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple; overload;
     function Replace(AValues: Variant): ITNTTuple; overload;
+    function Replace(AValues: array of const): ITNTTuple; overload;
 
     function Update(AIndexId: Integer; AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
     function Update(AIndexName: String; AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
+    function Update(AIndexName: String; AKeys: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
 
     function UpdateDefinition: ITNTUpdateDefinition;
-    function Upsert(AValues: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
+
+    function Upsert(AValues: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
+    function Upsert(AValues: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
 
     procedure Delete(AIndex: Int64; AKeys: Variant); overload;
     procedure Delete(AIndexName: String; AKeys: Variant); overload;
+    procedure Delete(AIndexName: String; AKeys: array of const); overload;
+
     procedure Truncate;
-    function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
-    function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
+
+    function Call(AFunctionName: string; AArguments: Variant): ITNTTuple; overload;
+    function Call(AFunctionName: string; AArguments: array of const): ITNTTuple; overload;
+
+    function Eval(AExpression: string; AArguments: Variant): ITNTTuple; overload;
+    function Eval(AExpression: string; AArguments: array of const): ITNTTuple; overload;
 
     property Field[Index: Integer]: ITNTField read GetField;
     function FieldByName(AName: string): ITNTField;
@@ -134,7 +144,7 @@ end;
 procedure TTNTSpace.CheckSpaceOpened;
 begin
  if FSpaceId = 0 then
-  raise ETarantoolException.CreateFmt('Space %s closed', [FName]);
+  raise ETarantoolException.CreateFmt(5, 'Space %s closed', [FName]);
 end;
 
 procedure TTNTSpace.Close;
@@ -200,12 +210,18 @@ begin
           end;
       end;
   end else
-   raise ETarantoolException.Create('Space not found');
+   raise ETarantoolException.Create(6, 'Space not found');
 end;
 
 function TTNTSpace.ArrayOfConstToVariant(AValues: array of const): Variant;
 begin
   Result := TNTVariant(AValues);
+end;
+
+function TTNTSpace.Call(AFunctionName: string;
+  AArguments: array of const): ITNTTuple;
+begin
+  Result := Connection.Call(AFunctionName, AArguments);
 end;
 
 procedure TTNTSpace.Delete(AIndexName: String; AKeys: Variant);
@@ -214,8 +230,13 @@ begin
  CheckSpaceOpened;
  Idx := FIndexList.NameIndex[AIndexName];
  if Idx = nil then
-  raise ETarantoolException.CreateFmt('Index %s not found in space %s', [AIndexName, FName]);
+  raise ETarantoolException.CreateFmt(7, 'Index %s not found in space %s', [AIndexName, FName]);
  Idx.Delete(AKeys);
+end;
+
+procedure TTNTSpace.Delete(AIndexName: String; AKeys: array of const); overload;
+begin
+ Delete(AIndexName, ArrayOfConstToVariant(AKeys));
 end;
 
 destructor TTNTSpace.Destroy;
@@ -230,9 +251,14 @@ begin
  FIndexList[AIndex].Delete(AKeys);
 end;
 
-function TTNTSpace.Eval(AExpression: string; AArguments: Variant): ITNTTuple;
+function TTNTSpace.Eval(AExpression: string; AArguments: Variant): ITNTTuple; overload;
 begin
  Result := Connection.Eval(AExpression, AArguments);
+end;
+
+function TTNTSpace.Eval(AExpression: string; AArguments: array of const): ITNTTuple; overload;
+begin
+ Result := Connection.Eval(AExpression, ArrayOfConstToVariant(AArguments));
 end;
 
 function TTNTSpace.FieldByName(AName: string): ITNTField;
@@ -292,16 +318,20 @@ begin
  Result := FSpaceId;
 end;
 
-function TTNTSpace.Insert(AValues: array of const): ITNTTuple;
+function TTNTSpace.Insert(AValues: array of const; ANeedAnswer: boolean = true): ITNTTuple;
 var
     v: variant;
     insertCmd: ITNTInsert;
 begin
+ Result := nil;
  CheckSpaceOpened;
  v := ArrayOfConstToVariant(AValues);
  InsertCmd := NewInsert(FSpaceId, v);
  Connection.WriteToTarantool(InsertCmd);
- Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple;
+ if ANeedAnswer then
+   Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple
+ else
+   Connection.ReadFromTarantool(ITNTConnection, Self);
 end;
 
 function TTNTSpace.Insert(AValues: Variant): ITNTTuple;
@@ -329,6 +359,14 @@ begin
   ReplaceCmd := NewReplace(FSpaceId, AValues);
   Connection.WriteToTarantool(ReplaceCmd);
   Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple;
+end;
+
+function TTNTSpace.Replace(AValues: array of const): ITNTTuple; overload;
+var
+    v: Variant;
+begin
+  v := ArrayOfConstToVariant(AValues);
+  Result := Replace(V);
 end;
 
 function TTNTSpace.Insert(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple;
@@ -423,8 +461,13 @@ begin
  Result := nil;
  Idx := FIndexList.NameIndex[AIndexName];
  if Idx = nil then
-  raise ETarantoolException.CreateFmt('Index %s not found in space %s', [AIndexName, FName]);
+  raise ETarantoolException.CreateFmt(8, 'Index %s not found in space %s', [AIndexName, FName]);
  Result := Idx.Update(AKeys, AUpdateDef);
+end;
+
+function TTNTSpace.Update(AIndexName: String; AKeys: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
+begin
+ Result := Update(AIndexName, ArrayOfConstToVariant(AKeys), AUpdateDef );
 end;
 
 function TTNTSpace.UpdateDefinition: ITNTUpdateDefinition;
@@ -433,13 +476,18 @@ begin
 end;
 
 function TTNTSpace.Upsert(AValues: Variant;
-  AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
+  AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
 var UpsertCmd: ITNTUpsert;
 begin
  CheckSpaceOpened;
  UpsertCmd := NewUpsert(FSpaceId, AValues, AUpdateDef);
  Connection.WriteToTarantool(UpsertCmd);
  Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple;
+end;
+
+function TTNTSpace.Upsert(AValues: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
+begin
+  Result := Upsert(ArrayOfConstToVariant(AValues), AUpdateDef);
 end;
 
 function TTNTSpace.Select(AIndexName: string; AKeys: Variant;
@@ -461,7 +509,7 @@ begin
  CheckSpaceOpened;
  FIndex := FIndexList.NameIndex[AIndexName];
  if FIndex = nil then
-  raise ETarantoolException.CreateFmt('Index %s not found in space %s', [AIndexName, FName]);
+  raise ETarantoolException.CreateFmt(9, 'Index %s not found in space %s', [AIndexName, FName]);
  Result := FIndex.Select(AKeys, ALimit, AOffset, AIterator);
 end;
 

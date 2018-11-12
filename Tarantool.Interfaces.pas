@@ -122,6 +122,8 @@ type
     procedure SetUseSSL(const Value: Boolean);
     function GetPool: ITNTConnectionPool;
     procedure SetPool(const Value: ITNTConnectionPool);
+    function GetReadTimeout: integer;
+    procedure SetReadTimeout(const Value: integer);
 
     function ReadFromTarantool(AResponseGuid: TGUID; ASpace: ITNTSpace): ITNTResponce;
     procedure WriteToTarantool(ACommand: ITNTCommand);
@@ -136,7 +138,9 @@ type
     property UseSSL: Boolean read GetUseSSL write SetUseSSL;
     property IsReady: boolean read GetIsReady;
     property Version: String read GetVersion;
-    function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
+    property ReadTimeout: integer read GetReadTimeout write SetReadTimeout;
+    function Call(AFunctionName: string; AArguments: Variant): ITNTTuple; overload;
+    function Call(AFunctionName: string; AArguments: array of const): ITNTTuple; overload;
     function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
     property Pool: ITNTConnectionPool read GetPool Write SetPool;
   end;
@@ -272,10 +276,12 @@ type
    function GetRowCount: Integer;
    function GetRow(Index: Integer): Variant;
    function GetItemCount(ARowIndex: Integer): Integer;
+   function GetTuple(Index: Integer): ITNTTuple;
 
    property Values: Variant read GetValues;
    property RowCount: Integer read GetRowCount;
    property Row[Index: Integer]: Variant read GetRow;
+   property Tuple[Index: Integer]: ITNTTuple read GetTuple;
    function FieldByName(ARow: Integer; AFieldName: String): Variant;
    function AddRow: Integer;
    procedure SetFieldValue(ARow: Integer; AFieldName: String; AValue: Variant);
@@ -355,17 +361,29 @@ type
 
     function Insert(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple; overload;
     function Insert(AValues: Variant): ITNTTuple; overload;
-    function Insert(AValues: array of const): ITNTTuple; overload;
+    function Insert(AValues: array of const; ANeedAnswer: boolean = true): ITNTTuple; overload;
 
     function Replace(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple; overload;
     function Replace(AValues: Variant): ITNTTuple; overload;
+    function Replace(AValues: array of const): ITNTTuple; overload;
 
     function Update(AIndexId: Integer; AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
+    function Update(AIndexName: String; AKeys: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
     function UpdateDefinition: ITNTUpdateDefinition;
-    function Upsert(AValues: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
+
+    function Upsert(AValues: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
+    function Upsert(AValues: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
+
     procedure Delete(AIndex: Int64; AKeys: Variant);
-    function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
-    function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
+    procedure Delete(AIndexName: String; AKeys: Variant); overload;
+    procedure Delete(AIndexName: String; AKeys: array of const); overload;
+
+    function Call(AFunctionName: string; AArguments: Variant): ITNTTuple; overload;
+    function Call(AFunctionName: string; AArguments: array of const): ITNTTuple; overload;
+
+    function Eval(AExpression: string; AArguments: Variant): ITNTTuple; overload;
+    function Eval(AExpression: string; AArguments: array of const): ITNTTuple; overload;
+
     function Count: Integer;
     property Field[Index: Integer]: ITNTField read GetField;
     function FieldByName(AName: string): ITNTField;

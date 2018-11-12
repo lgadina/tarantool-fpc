@@ -42,12 +42,15 @@ uses
   , Tarantool.Pool
   , Tarantool.Utils
   , Tarantool.Exceptions
+  , Tarantool.Variants
   , Generics.Collections
 ;
 
 
 type
   TTNTSpaceList = class(TDictionary<String,ITNTSpace>);
+
+  { TTNTConnection }
 
   TTNTConnection = class(TInterfacedObject, ITNTConnection)
   private
@@ -66,6 +69,7 @@ type
     FUserName: string;
     FIsReady: boolean;
     FVersion: String;
+    FReadTimeOut: Integer;
     function GetUserName: string;
     function GetHostName: string;
     function GetIsReady: boolean;
@@ -81,6 +85,8 @@ type
     function GetTarantoolPacketLength(ABuf: TBytes): Integer;
     function GetPool: ITNTConnectionPool;
     procedure SetPool(const Value: ITNTConnectionPool);
+    function GetReadTimeout: integer;
+    procedure SetReadTimeout(const Value: integer);
 
   protected
     function IdBytes2Bytes(ABytes: TIdBytes): TBytes;
@@ -108,8 +114,12 @@ type
     property IsReady: boolean read GetIsReady;
     property Version: String read GetVersion;
     property Pool: ITNTConnectionPool read GetPool Write SetPool;
-    function Call(AFunctionName: string; AArguments: Variant): ITNTTuple;
-    function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
+    property ReadTimeout: integer read GetReadTimeout write SetReadTimeout;
+    function Call(AFunctionName: string; AArguments: Variant): ITNTTuple; overload;
+    function Call(AFunctionName: string; AArguments: array of const): ITNTTuple; overload;
+
+    function Eval(AExpression: string; AArguments: Variant): ITNTTuple; overload;
+    function Eval(AExpression: string; AArguments: array of const): ITNTTuple; overload;
   public
 
   end;
@@ -123,12 +133,20 @@ begin
 end;
 
 function TTNTConnection.Call(AFunctionName: string;
+  AArguments: array of const): ITNTTuple;
+begin
+  Result := Call(AFunctionName, TNTVariant(AArguments));
+end;
+
+function TTNTConnection.Call(AFunctionName: string;
   AArguments: Variant): ITNTTuple;
 var CallCmd: ITNTCall;
 begin
   CallCmd := NewCall(AFunctionName, AArguments);
   WriteToTarantool(CallCmd);
   Result := ReadFromTarantool(ITNTTuple, nil) as ITNTTuple;
+  if Result.RowCount > 0 then
+    Result := Result.Tuple[0];
 end;
 
 procedure TTNTConnection.Close;
@@ -154,7 +172,7 @@ end;
 
 procedure TTNTConnection.ConnectionOnSocketAllocated(Sender: TObject);
 begin
-  FTcpClient.Socket.ReadTimeout := 2000; // TODO: get from config
+  FTcpClient.Socket.ReadTimeout := FReadTimeOut; // TODO: get from config
   FTcpClient.Socket.OnStatus := SocketOnStatus;
 end;
 
@@ -227,6 +245,11 @@ begin
   Result := ReadFromTarantool(ITNTTuple, nil) as ITNTTuple;
 end;
 
+function TTNTConnection.Eval(AExpression: string; AArguments: array of const): ITNTTuple; overload;
+begin
+ Result := Eval(AExpression, TNTVariant(AArguments));
+end;
+
 function TTNTConnection.FindSpaceByName(ASpaceName: string): ITNTSpace;
 var Select: ITNTSelect;
 begin
@@ -273,6 +296,11 @@ end;
 function TTNTConnection.GetPort: integer;
 begin
  Result := FPort;
+end;
+
+function TTNTConnection.GetReadTimeout: integer;
+begin
+ Result := FReadTimeOut;
 end;
 
 function TTNTConnection.GetUseSSL: Boolean;
@@ -373,10 +401,11 @@ begin
    FTCPClient.IOHandler.ReadBytes(InBuf, BufLen, False);
    Packer := TTNTPacker.Create;
    Packer.AsBytes := InBuf;
+   SetLength(InBuf, 0);
    if Packer.Header.UnpackInteger(tnCode) >= tncERROR then
     begin
      Result := ErrorResponse(Packer, Self);
-     raise ETarantoolException.Create((Result as ITNTError).ErrorMessage);
+     raise ETarantoolException.Create((Result as ITNTError).ErrorCode, (Result as ITNTError).ErrorMessage);
     end;
   FClass := GetResponseClass(AResponceGuid);
   if FClass <> nil then
@@ -401,6 +430,16 @@ end;
 procedure TTNTConnection.SetPort(const Value: integer);
 begin
   FPort := Value;
+end;
+
+procedure TTNTConnection.SetReadTimeout(const Value: integer);
+begin
+ if Value <> FReadTimeOut then
+  begin
+    FReadTimeOut := Value;
+    if assigned(FTCPClient) and Assigned(FTCPClient.Socket) then
+     FTCPClient.Socket.ReadTimeout := FReadTimeOut;
+  end;
 end;
 
 procedure TTNTConnection.SetUserName(const Value: string);

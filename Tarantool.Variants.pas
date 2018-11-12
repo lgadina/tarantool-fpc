@@ -10,7 +10,12 @@ uses
   Variants,
   TypInfo,
   Tarantool.SimpleMsgPack,
-  Tarantool.Interfaces;
+  Tarantool.Interfaces
+{$IFDEF SUPEROBJECT}
+  , superobject
+  , supertypes
+{$ENDIF}
+  ;
 
 type
   TTNTStringDynArray = array of string;
@@ -93,6 +98,9 @@ type
     property ValueCopy[const aName: string]: variant read GetValueCopy;
     property Item[aIndex: integer]: variant read GetItem write SetItem;
     function ToObject(Instance: TObject): boolean;
+{$IFDEF SUPEROBJECT}
+    function ToJson: ISuperObject;
+{$ENDIF}
   end;
   {$A+}
 
@@ -538,9 +546,6 @@ begin
 end;
 
 
-
-
-
 function TTNTVariantData.ToMsgPack: TTNTMsgPack;
 var i: Integer;
     vt: Word;
@@ -575,6 +580,43 @@ begin
  end else
   Result := TTNTMsgPack.Create(mptArray);
 end;
+
+{$IFDEF SUPEROBJECT}
+function TTNTVariantData.ToJson: ISuperObject;
+var i: Integer;
+    vt: Word;
+begin
+ Result := nil;
+ if VKind = tvkObject then
+ begin
+  Result := SO();
+  for I := 0 to VCount - 1 do
+    begin
+      vt := VarType(Values[I]);
+      if vt = TNTVariantType.VarType then
+       begin
+         Result.O[Names[I]] := TNTVariantData(Values[I])^.ToJson;
+       end else
+        Result.O[Names[I]] := SO(Values[i]);
+    end;
+ end
+ else
+ if VKind = tvkArray then
+ begin
+  Result := TSuperObject.Create(stArray);
+  for I := 0 to VCount - 1 do
+    begin
+      vt := VarType(Values[I]);
+      if vt = TNTVariantType.VarType then
+       begin
+         Result.AsArray.Add(TNTVariantDataSafe(Values[I])^.ToJson);
+       end else
+        Result.AsArray.Add(SO(Values[i]));
+    end;
+ end else
+  Result := TSuperObject.Create(stArray);
+end;
+{$ENDIF}
 
 type
   PTObject = ^TObject;
@@ -692,7 +734,7 @@ begin
   if (PropInfo<>nil) and (Instance<>nil) then
   begin
     PropType := {$IfDef FPC}PropInfo^.PropType{$Else}PropInfo^.PropType^{$EndIf};
-     CustomSerializer := GetCustomSerializer(PropInfo^.PropType);
+     CustomSerializer := GetCustomSerializer({$IfDef FPC}PropInfo^.PropType{$Else}PropInfo^.PropType^{$EndIf});
      if CustomSerializer <> nil then
       CustomSerializer.ToObject(Instance, PropInfo, Value)
      else
@@ -772,7 +814,6 @@ begin
 
 end;
 
-{ TJSONVariant }
 
 procedure TTNTVariant.Cast(var Dest: TVarData; const Source: TVarData);
 begin
@@ -784,6 +825,8 @@ procedure TTNTVariant.CastTo(var Dest: TVarData; const Source: TVarData;
 begin
   if Source.VType<>VarType then
     RaiseCastError;
+  if AVarType = varUString then
+   Variant(Dest) := TTNTVariantData(Source).ToJson.AsJSon(True);
 end;
 
 procedure TTNTVariant.Clear(var V: TVarData);
@@ -868,7 +911,9 @@ begin
      vtVariant: TNTVariantDataSafe(v)^.AddValue(TVarRec(AValues[i]).VVariant^);
      vtInterface: TNTVariantDataSafe(v)^.AddValue(TNTVariant(IUnknown(TVarRec(AValues[i]).VInterface)));
      vtInt64: TNTVariantDataSafe(v)^.AddValue(TVarRec(AValues[i]).VInt64^);
+     {$IFDEF FPC}
      vtQWord: TNTVariantDataSafe(v)^.AddValue(TVarRec(AValues[i]).VQWord^);
+     {$ENDIF}
      vtUnicodeString: TNTVariantDataSafe(v)^.AddValue(UnicodeString(TVarRec(AValues[i]).VUnicodeString));
     end;
   end;
@@ -1081,7 +1126,7 @@ begin
         begin
           PI := PL^[I];
             typ := PI^.PropType^.Kind;
-            CustomSerializer := GetCustomSerializer(PI^.PropType);
+            CustomSerializer := GetCustomSerializer({$IFDEF FPC}PI^.PropType{$ELSE}PI^.PropType^{$ENDIF});
             if CustomSerializer <> nil then
               TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, CustomSerializer.ToVariant(AObject, PI))
             else

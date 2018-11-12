@@ -99,7 +99,7 @@ begin
   if (AOperation in [TTNTUpdateOperationCode.Addition, TTNTUpdateOperationCode.Subtraction,
       TTNTUpdateOperationCode.BitwiseAnd, TTNTUpdateOperationCode.BitwiseXor,
       TTNTUpdateOperationCode.BitwiseOr]) and not VarIsOrdinal(AValue) then
-       ETarantoolInvalidUpdateOperation.CreateFmt('Invalid operation "%s" for value', [AOperation.ToChar]);
+       ETarantoolInvalidUpdateOperation.CreateFmt(1, 'Invalid operation "%s" for value', [AOperation.ToChar]);
 
   Obj := TTNTUpdateOperationClass.Create;
   Obj.FieldNo := AFieldNo;
@@ -117,7 +117,7 @@ begin
   if Field <> nil then
     Result := AddOperation(Field.Index, AOperation, AValue)
   else
-   raise ETarantoolInvalidUpdateOperation.CreateFmt('Field %s not defined', [AFieldName]);
+   raise ETarantoolInvalidUpdateOperation.CreateFmt(2, 'Field %s not defined', [AFieldName]);
 end;
 
 constructor TTNTUpdateDefintion.Create(ASpace: ITNTSpace);
@@ -171,7 +171,7 @@ begin
     inherited;
     UpdateDefinition.PackToMessage(APacker.Body.PackArray(tnTuple));
   end else
-   raise ETarantoolException.Create('Update defintion is empty!');
+   raise ETarantoolInvalidValue.Create(3, 'Update defintion is empty!');
 end;
 
 
