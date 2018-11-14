@@ -234,7 +234,7 @@ begin
  Idx.Delete(AKeys);
 end;
 
-procedure TTNTSpace.Delete(AIndexName: String; AKeys: array of const); overload;
+procedure TTNTSpace.Delete(AIndexName: String; AKeys: array of const);
 begin
  Delete(AIndexName, ArrayOfConstToVariant(AKeys));
 end;
@@ -251,12 +251,12 @@ begin
  FIndexList[AIndex].Delete(AKeys);
 end;
 
-function TTNTSpace.Eval(AExpression: string; AArguments: Variant): ITNTTuple; overload;
+function TTNTSpace.Eval(AExpression: string; AArguments: Variant): ITNTTuple;
 begin
  Result := Connection.Eval(AExpression, AArguments);
 end;
 
-function TTNTSpace.Eval(AExpression: string; AArguments: array of const): ITNTTuple; overload;
+function TTNTSpace.Eval(AExpression: string; AArguments: array of const): ITNTTuple;
 begin
  Result := Connection.Eval(AExpression, ArrayOfConstToVariant(AArguments));
 end;
@@ -361,7 +361,7 @@ begin
   Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple;
 end;
 
-function TTNTSpace.Replace(AValues: array of const): ITNTTuple; overload;
+function TTNTSpace.Replace(AValues: array of const): ITNTTuple;
 var
     v: Variant;
 begin
@@ -465,7 +465,7 @@ begin
  Result := Idx.Update(AKeys, AUpdateDef);
 end;
 
-function TTNTSpace.Update(AIndexName: String; AKeys: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
+function TTNTSpace.Update(AIndexName: String; AKeys: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
 begin
  Result := Update(AIndexName, ArrayOfConstToVariant(AKeys), AUpdateDef );
 end;
@@ -476,7 +476,7 @@ begin
 end;
 
 function TTNTSpace.Upsert(AValues: Variant;
-  AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
+  AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
 var UpsertCmd: ITNTUpsert;
 begin
  CheckSpaceOpened;
@@ -485,7 +485,7 @@ begin
  Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple;
 end;
 
-function TTNTSpace.Upsert(AValues: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
+function TTNTSpace.Upsert(AValues: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
 begin
   Result := Upsert(ArrayOfConstToVariant(AValues), AUpdateDef);
 end;

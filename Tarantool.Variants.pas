@@ -15,6 +15,13 @@ uses
   , superobject
   , supertypes
 {$ENDIF}
+{$IFDEF JSONRTL}
+  , System.JSON
+  , REST.Json
+{$ENDIF}
+{$IFDEF USE_RTTI_CONTEXT}
+  , RTTI
+{$ENDIF}
   ;
 
 type
@@ -77,7 +84,7 @@ type
     procedure InitFrom(const AMsgPack: TTNTMsgPack); overload;
     procedure InitFrom(const APacker: ITNTPackerArray); overload;
     procedure InitFrom(const APacker: ITNTPackerMap); overload;
-    function ToMsgPack: TTNTMsgPack;
+    function ToMsgPack(AMsgPack: TTNTMsgPack = nil): TTNTMsgPack;
     procedure PackToMessage(const APacker: ITNTPackerArray);
     procedure InitFrom(const aValues: TTNTVariantDynArray); overload;
     procedure Clear;
@@ -100,6 +107,9 @@ type
     function ToObject(Instance: TObject): boolean;
 {$IFDEF SUPEROBJECT}
     function ToJson: ISuperObject;
+{$ENDIF}
+{$IFDEF JSONRTL}
+    function ToJson: TJSONValue;
 {$ENDIF}
   end;
   {$A+}
@@ -132,14 +142,14 @@ type
 type
   ITNTSerializer = interface
   ['{6E2C36BB-B777-4D7D-9465-78321FF5AE37}']
-    function ToVariant(AObject: TObject; APropInfo: PPropInfo): Variant;
-    procedure ToObject(AObject: TObject; APropInfo: PPropInfo; AValue: Variant);
+    function ToVariant(AObject: TObject; APropInfo: {$IFDEF USE_RTTI_CONTEXT}TRttiProperty{$ELSE}PPropInfo{$ENDIF}): Variant;
+    procedure ToObject(AObject: TObject; APropInfo: {$IFDEF USE_RTTI_CONTEXT}TRttiProperty{$ELSE}PPropInfo{$ENDIF}; AValue: Variant);
   end;
 
   TTNTCustomSerializer = class(TInterfacedObject, ITNTSerializer)
   protected
-    function ToVariant(AObject: TObject; APropInfo: PPropInfo): Variant; virtual; abstract;
-    procedure ToObject(AObject: TObject; APropInfo: PPropInfo; AValue: Variant); virtual; abstract;
+    function ToVariant(AObject: TObject; APropInfo: {$IFDEF USE_RTTI_CONTEXT}TRttiProperty{$ELSE}PPropInfo{$ENDIF}): Variant; virtual; abstract;
+    procedure ToObject(AObject: TObject; APropInfo: {$IFDEF USE_RTTI_CONTEXT}TRttiProperty{$ELSE}PPropInfo{$ENDIF}; AValue: Variant); virtual; abstract;
   end;
 
   TTNTCustomSerializerClass = class of TTNTCustomSerializer;
@@ -156,21 +166,31 @@ function TNTVariant(const AMap: ITNTPackerMap): Variant; overload;
 function TNTMsgPack(const TNTVariant: Variant): TTNTMsgPack;
 
 function TNTVariantData(const TNTVariant: Variant): PTNTVariantData;
-function TNTObject(const TNTVariant: Variant; AClass: TClass): TObject;
-function TNTInterface(const TNTVariant: Variant; AClass: TClass): IUnknown;
+function TNTObject(const ATNTVariant: Variant; AClass: TClass): TObject; overload;
+procedure TNTObject(const ATNTVariant: Variant; AObject: TObject); overload;
+
+function TNTInterface(const ATNTVariant: Variant; AClass: TClass): IUnknown; overload;
+procedure TNTInterface(const ATNTVariant: Variant; AInterface: IUnknown); overload;
+
 function TNTVariantDataSafe(const TNTVariant: variant;
   ExpectedKind: TTNTVariantKind=tvkUndefined): PTNTVariantData;
 
+{$IFDEF USE_RTTI_CONTEXT}
+procedure SetInstanceProp(Instance: TObject; PropInfo: TRttiProperty;
+  const Value: variant);
+{$ELSE}
 procedure SetInstanceProp(Instance: TObject; PropInfo: PPropInfo;
   const Value: variant);
-
+{$ENDIF}
 procedure TNTRegisterCustomSerializer(ATypeInfo: PTypeInfo; AClass: TTNTCustomSerializerClass);
 
 implementation
 
 uses Tarantool.UserKeys
 , Tarantool.Utils
+, Tarantool.Exceptions
 , Generics.Collections
+, DateUtils
 {$IfNDef FPC}
 , Soap.InvokeRegistry
 , System.StrUtils
@@ -188,8 +208,9 @@ var
 function GetCustomSerializer(ATypeInfo: PTypeInfo): ITNTSerializer;
 begin
   Result := nil;
-  if FCustomSerializer.ContainsKey(ATypeInfo) then
-    Result := FCustomSerializer[ATypeInfo].Create;
+  if Assigned(FCustomSerializer) then
+   if FCustomSerializer.ContainsKey(ATypeInfo) then
+     Result := FCustomSerializer[ATypeInfo].Create;
 end;
 
 procedure TTNTVariantData.Init;
@@ -479,14 +500,14 @@ begin
 end;
 
 procedure TTNTVariantData.PackToMessage(const APacker: ITNTPackerArray);
-var MsgPack: TTNTMsgPack;
+//var MsgPack: TTNTMsgPack;
 begin
- MsgPack := ToMsgPack;
- try
+ ToMsgPack(APacker.Obj);
+{ try
    APacker.AsBytes := MsgPack.EncodeToBytes;
  finally
   MsgPack.Free;
- end;
+ end;}
 end;
 
 procedure TTNTVariantData.SetPath(const aPath: string; const aValue: variant);
@@ -546,14 +567,17 @@ begin
 end;
 
 
-function TTNTVariantData.ToMsgPack: TTNTMsgPack;
+function TTNTVariantData.ToMsgPack(AMsgPack: TTNTMsgPack = nil): TTNTMsgPack;
 var i: Integer;
     vt: Word;
 begin
- Result := nil;
+ Result := AMsgPack;
  if VKind = tvkObject then
  begin
-  Result := TTNTMsgPack.Create(mptMap);
+  if (AMsgPack <> nil) and (AMsgPack.DataType <> mptMap) then
+     raise ETarantoolException.Create(156, 'Wrong msgpack type. Expected mptMap');
+  if Result = nil then
+    Result := TTNTMsgPack.Create(mptMap);
   for I := 0 to VCount - 1 do
     begin
       vt := VarType(Values[I]);
@@ -567,7 +591,10 @@ begin
  else
  if VKind = tvkArray then
  begin
-  Result := TTNTMsgPack.Create(mptArray);
+  if (AMsgPack <> nil) and (AMsgPack.DataType <> mptArray) then
+     raise ETarantoolException.Create(156, 'Wrong msgpack type. Expected mptArray');
+  if Result = nil then
+    Result := TTNTMsgPack.Create(mptArray);
   for I := 0 to VCount - 1 do
     begin
       vt := VarType(Values[I]);
@@ -615,6 +642,65 @@ begin
     end;
  end else
   Result := TSuperObject.Create(stArray);
+end;
+{$ENDIF}
+
+{$IFDEF JSONRTL}
+function TTNTVariantData.ToJson: TJSONValue;
+var i: Integer;
+    vt: Word;
+
+   function CreateJson(AValue: Variant): TJSONValue;
+   var
+    VType: Word;
+   begin
+     VType:= tvardata(AValue).vtype;
+     case VType of
+       varempty: {};
+       varnull: Result := TJsonNull.Create;
+       varint64:  Result := TJSONNumber.Create(tvardata(AValue).vint64);
+       varinteger:  Result := TJSONNumber.Create(tvardata(AValue).vinteger);
+       varword: Result := TJSONNumber.Create(tvardata(AValue).vword);
+       varbyte: Result := TJSONNumber.Create(tvardata(AValue).vbyte);
+       vardate:  Result := TJSONNumber.Create(DateTimeToUnix(tvardata(AValue).vdate));
+       varshortint: Result := TJSONNumber.Create(tvardata(AValue).vshortint);
+       varUString, varstring, varustrarg:  Result := TJSONString.Create(VarToStr(AValue));
+       vardouble:  Result := TJSONNumber.Create(tvardata(AValue).vdouble);
+       varboolean:  Result := TJSONBool.Create(tvardata(AValue).vboolean);
+     end;
+
+   end;
+
+begin
+ Result := nil;
+ if VKind = tvkObject then
+ begin
+  Result := TJSONObject.Create;
+  for I := 0 to VCount - 1 do
+    begin
+      vt := VarType(Values[I]);
+      if vt = TNTVariantType.VarType then
+       begin
+         TJSONObject(Result).AddPair(Names[i], TNTVariantData(Values[I])^.ToJson);
+       end else
+        TJSONObject(Result).AddPair(Names[I], CreateJSON(Values[i]));
+    end;
+ end
+ else
+ if VKind = tvkArray then
+ begin
+  Result := TJsonArray.Create;
+  for I := 0 to VCount - 1 do
+    begin
+      vt := VarType(Values[I]);
+      if vt = TNTVariantType.VarType then
+       begin
+         TJsonArray(Result).AddElement(TNTVariantDataSafe(Values[I])^.ToJson);
+       end else
+        TJsonArray(Result).AddElement(CreateJson(Values[i]));
+    end;
+ end else
+  Result := TJsonArray.Create;;
 end;
 {$ENDIF}
 
@@ -723,6 +809,70 @@ begin
   Result := ConvertVariantToNativeArrayElem(ATypeInfo, ElemInfo, Dims, 0, AData, AValue);
 end;
 
+{$IFDEF USE_RTTI_CONTEXT}
+procedure SetInstanceProp(Instance: TObject; PropInfo: TRttiProperty;
+  const Value: variant);
+var
+  CustomSerializer: ITNTSerializer;
+  LValue: TValue;
+  Obj: TObject;
+begin
+  LValue := PropInfo.GetValue(Instance);
+  CustomSerializer := GetCustomSerializer(LValue.TypeInfo);
+  if CustomSerializer = nil then
+  begin
+   case LValue.Kind of
+     tkUnknown: ;
+     tkInteger: LValue := TValue.FromVariant(Value);
+     tkInt64: LValue := TValue.FromVariant(Value);
+     tkChar: LValue := TValue.FromVariant(Value);
+
+     tkEnumeration: if LValue.TypeInfo = TypeInfo(boolean) then
+                     LValue := TValue.FromVariant(Value) else
+                    TValue.Make(GetEnumValue(LValue.TypeInfo, Value), LValue.TypeInfo, LValue);
+     tkFloat: if (LValue.TypeInfo = TypeInfo(TDate)) or
+                 (LValue.TypeInfo = TypeInfo(TDateTime)) or
+                 (LValue.TypeInfo = TypeInfo(TTime)) then
+                  LValue := TValue.From<TDateTime>(UnixToDateTime(Value))
+              else
+               LValue := TValue.FromVariant(Value);
+     tkWChar,
+     tkLString,
+     tkWString,
+     tkUString,
+     tkString: LValue := TValue.FromVariant(Value);
+
+     tkSet: ;
+
+     tkInterface,
+     tkClass: begin
+                if LValue.Kind = tkInterface then
+                  Obj := LValue.AsInterface as TObject
+                else
+                  obj := LValue.AsObject;
+
+                if TVarData(Value).VType>varNull then
+                  if obj=nil then begin
+                    obj := TNTObject(Value, GetTypeData(LValue.TypeInfo)^.ClassType);
+                    if obj<>nil then
+                      LValue := TValue.From<TObject>(Obj)
+                  end else
+                    TNTVariantData(Value)^.ToObject(obj);
+              end;
+
+     tkVariant: LValue := TValue.FromVariant(Value);
+
+     tkArray: ;
+     tkRecord: ;
+     tkDynArray: ;
+   end;
+   if not LValue.IsEmpty and PropInfo.IsWritable then
+     PropInfo.SetValue(Instance, LValue);
+  end
+    else
+    CustomSerializer.ToObject(Instance, PropInfo, Value);
+end;
+{$ELSE}
 procedure SetInstanceProp(Instance: TObject; PropInfo: PPropInfo;
   const Value: variant);
 var
@@ -797,21 +947,39 @@ begin
 
   end;
 end;
-
+{$ENDIF}
 
 function TTNTVariantData.ToObject(Instance: TObject): boolean;
 var i: Integer;
+{$IFDEF USE_RTTI_CONTEXT}
+  LCtx: TRttiContext;
+  ObjType: TRttiType;
+{$ENDIF}
+
 begin
+{$IFDEF USE_RTTI_CONTEXT}
+  LCtx:= TRttiContext.Create;
+  ObjType := LCtx.GetType(Instance.ClassType);
+  try
+{$ENDIF}
  Result := false;
  if Instance = nil then
   Exit;
  case VKind of
    tvkUndefined: ;
    tvkObject: for i := 0 to Count - 1 do
+              {$IFDEF USE_RTTI_CONTEXT}
+                SetInstanceProp(Instance, ObjType.GetProperty(Names[i]), Values[I]);
+              {$ELSE}
                 SetInstanceProp(Instance, GetPropInfo(Instance, Names[i]), Values[I]);
+              {$ENDIF}
    tvkArray: ;
  end;
-
+{$IFDEF USE_RTTI_CONTEXT}
+ finally
+  LCtx.Free;
+ end;
+{$ENDIF}
 end;
 
 
@@ -825,8 +993,13 @@ procedure TTNTVariant.CastTo(var Dest: TVarData; const Source: TVarData;
 begin
   if Source.VType<>VarType then
     RaiseCastError;
+{$IF DEFINED(SUPEROBJECT) or DEFINED(JSONRTL)}
   if AVarType = varUString then
-   Variant(Dest) := TTNTVariantData(Source).ToJson.AsJSon(True);
+   Variant(Dest) := TTNTVariantData(Source)
+     .ToJson
+     {$IFDEF SUPEROBJECT}.AsJSon(True);{$ENDIF}
+     {$IFDEF JSONRTL}.ToJSON;{$ENDIF}
+{$ENDIF}
 end;
 
 procedure TTNTVariant.Clear(var V: TVarData);
@@ -934,7 +1107,7 @@ end;
 
 function TNTVariant(const AMap: ITNTPackerMap): Variant; overload;
 begin
- VarClear(Result);
+  VarClear(Result);
   TTNTVariantData(Result).InitFrom(AMap);
 end;
 
@@ -1103,6 +1276,7 @@ begin
 end;
 
 function TNTVariant(const AObject: TObject): Variant; overload;
+{$IFNDEF USE_RTTI_CONTEXT}
 var
   C, I: Integer;
   PI: PPropInfo;
@@ -1144,7 +1318,6 @@ begin
                   TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetOrdProp(AObject, PI) = 1)
                 else
                   TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetEnumProp(AObject, PI));
-
               end;
               tkClass, tkInterface: Begin
 
@@ -1174,36 +1347,122 @@ begin
    end;
  end;
 end;
+{$ELSE}
+var LCtx: TRttiContext;
+    Prop: TRttiProperty;
+    ObjType: TRttiType;
+    CustomSerializer: ITNTSerializer;
+    Value: TValue;
+    ChildObject: TObject;
+begin
+   Result := TNTVariant;
+   LCtx := TRttiContext.Create;
+   try
+    ObjType := LCtx.GetType(AObject.ClassType);
+    for prop in ObjType.GetProperties do
+      if Prop.Visibility = mvPublished then
+        begin
+          Value := Prop.GetValue(AObject);
+          CustomSerializer := GetCustomSerializer(Value.TypeInfo);
+          if CustomSerializer = nil then
+          begin
+            case Value.Kind of
+              tkUnknown: ;
+              tkInteger: TNTVariantDataSafe(Result)^.AddNameValue(Prop.Name, Value.AsInteger);
+              tkInt64: TNTVariantDataSafe(Result)^.AddNameValue(Prop.Name, Value.AsInt64);
+              tkChar: ;
+              tkEnumeration: begin
+                               if Value.TypeInfo = TypeInfo(boolean) then
+                                TNTVariantDataSafe(Result)^.AddNameValue(Prop.Name, Value.AsBoolean)
+                               else
+                                TNTVariantDataSafe(Result)^.AddNameValue(Prop.Name, GetEnumName(Value.TypeInfo, Value.AsInteger));
+                             end;
+              tkFloat: begin
+                        if (Value.TypeInfo = TypeInfo(TDate)) or
+                           (Value.TypeInfo = TypeInfo(TDateTime)) or
+                           (Value.TypeInfo = TypeInfo(TTime))
+                        then
+                          TNTVariantDataSafe(Result)^.AddNameValue(Prop.Name, DateTimeToUnix(Value.AsExtended))
+                        else
+                          TNTVariantDataSafe(Result)^.AddNameValue(Prop.Name, Value.AsExtended);
+                       end;
+              tkWChar,
+              tkLString,
+              tkString,
+              tkWString,
+              tkUString: TNTVariantDataSafe(Result)^.AddNameValue(Prop.Name, Value.AsString);
+              tkSet: ;
+
+              tkClass,
+              tkInterface: begin
+                             if Value.Kind = tkInterface then
+                              ChildObject := Value.AsInterface as TObject
+                             else
+                              ChildObject := Value.AsObject;
+                             if Assigned(ChildObject) then
+                             begin
+                              if ChildObject.InheritsFrom(TRemotableXS) then
+                               TNTVariantDataSafe(Result)^.AddNameValue(Prop.Name, TRemotableXS(ChildObject).NativeToXS)
+                              else
+                               TNTVariantDataSafe(Result)^.AddNameValue(Prop.Name, TNTVariant(ChildObject));
+                             end;
+                           end;
+              tkVariant: TNTVariantDataSafe(Result)^.AddNameValue(Prop.Name, Value.AsVariant);
+              tkArray: ;
+              tkDynArray: ;
+              tkRecord: ;
+            end;
+          end else
+           TNTVariantDataSafe(Result)^.AddNameValue(Prop.Name, CustomSerializer.ToVariant(AObject, Prop));
+        end;
+   finally
+     LCtx.Free;
+   end;
+end;
+{$ENDIF}
+
 
 function TNTVariant(const AInterface: IUnknown): Variant; overload;
 begin
  Result := TNTVariant(AInterface as TObject);
 end;
 
-function TNTObject(const TNTVariant: Variant; AClass: TClass): TObject;
+function TNTObject(const ATNTVariant: Variant; AClass: TClass): TObject;
 begin
   Result := nil;
 {$IfNDef FPC}
   if AClass.InheritsFrom(TRemotableXS) then
    begin
      Result := AClass.Create;
-     TRemotableXS(Result).XSToNative(TNTVariant);
+     TRemotableXS(Result).XSToNative(ATNTVariant);
    end else
 {$EndIf}
-  if VarType(TNTVariant) = TNTVariantType.VarType then
+  if VarType(ATNTVariant) = TNTVariantType.VarType then
    begin
      Result := AClass.Create;
-     TNTVariantData(TNTVariant)^.ToObject(Result);
+     TNTObject(ATNTVariant, Result);
    end;
 end;
 
-function TNTInterface(const TNTVariant: Variant; AClass: TClass): IUnknown;
+procedure TNTObject(const ATNTVariant: Variant; AObject: TObject); overload;
+begin
+  TNTVariantData(ATNTVariant)^.ToObject(AObject);
+end;
+
+function TNTInterface(const ATNTVariant: Variant; AClass: TClass): IUnknown;
 var Obj: TObject;
 begin
   Result := nil;
   Obj:= AClass.Create;
-  TNTVariantData(TNTVariant)^.ToObject(Obj);
+  TNTVariantData(ATNTVariant)^.ToObject(Obj);
   if Supports(Obj, IUnknown, Result)  then {};
+end;
+
+procedure TNTInterface(const ATNTVariant: Variant; AInterface: IUnknown); overload;
+var Obj: TObject;
+begin
+ Obj := AInterface as TObject;
+ TNTObject(ATNTVariant, Obj)
 end;
 
 

@@ -80,9 +80,12 @@ type
     property AsBytes: TBytes read GetAsBytes write SetAsBytes;
   end;
 
+  { ITNTPackerArray }
+
   ITNTPackerArray = interface
     ['{2DF2CD7E-3129-4047-8AAD-73E61792F96D}']
     function GetAsBytes: TBytes;
+    function GetObj: TTNTMsgPack;
     procedure SetAsBytes(const Value: TBytes);
 
     function Pack(const AValue: Integer): ITNTPackerArray; overload;
@@ -94,6 +97,7 @@ type
     function PackMap: ITNTPackerMap;
     function Count: Integer;
     function DataType(const Index: Integer): TMsgPackType;
+    procedure SetObj(AValue: TTNTMsgPack);
     function UnpackInteger(const Index: Integer): Integer;
     function UnpackString(const Index: Integer): String;
     function UnpackBytes(const Index: Integer): TBytes;
@@ -102,6 +106,7 @@ type
     function UnpackBoolean(const Index: Integer): Boolean;
     function UnpackVariant(const Index: Integer): Variant;
     property AsBytes: TBytes read GetAsBytes write SetAsBytes;
+    property Obj: TTNTMsgPack read GetObj write SetObj;
 
   end;
 
@@ -367,14 +372,14 @@ type
     function Replace(AValues: Variant): ITNTTuple; overload;
     function Replace(AValues: array of const): ITNTTuple; overload;
 
-    function Update(AIndexId: Integer; AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;
+    function Update(AIndexId: Integer; AKeys: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
     function Update(AIndexName: String; AKeys: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
     function UpdateDefinition: ITNTUpdateDefinition;
 
     function Upsert(AValues: Variant; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
     function Upsert(AValues: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple; overload;
 
-    procedure Delete(AIndex: Int64; AKeys: Variant);
+    procedure Delete(AIndex: Int64; AKeys: Variant); overload;
     procedure Delete(AIndexName: String; AKeys: Variant); overload;
     procedure Delete(AIndexName: String; AKeys: array of const); overload;
 

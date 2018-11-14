@@ -43,7 +43,7 @@ end;
 
 function TTNTError.GetErrorCode: Integer;
 begin
- Result := inherited GetCode;
+ Result := inherited GetCode and $fff;
 end;
 
 function TTNTError.GetErrorMessage: String;

@@ -245,7 +245,7 @@ begin
   Result := ReadFromTarantool(ITNTTuple, nil) as ITNTTuple;
 end;
 
-function TTNTConnection.Eval(AExpression: string; AArguments: array of const): ITNTTuple; overload;
+function TTNTConnection.Eval(AExpression: string; AArguments: array of const): ITNTTuple;
 begin
  Result := Eval(AExpression, TNTVariant(AArguments));
 end;

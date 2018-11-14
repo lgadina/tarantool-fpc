@@ -75,11 +75,15 @@ type
     property AsBytes: TBytes read GetAsBytes write SetAsBytes;
   end;
 
+  { TTNTPackArray }
+
   TTNTPackArray = class(TInterfacedObject, ITNTPackerArray)
   private
     FObj: TTNTMsgPack;
     function GetAsBytes: TBytes;
+    function GetObj: TTNTMsgPack;
     procedure SetAsBytes(const Value: TBytes);
+    procedure SetObj(AValue: TTNTMsgPack);
   protected
     procedure InternalPack(const AValue: Integer); overload;
     procedure InternalPack(const AValue: string); overload;
@@ -104,6 +108,7 @@ type
     function UnpackBoolean(const Index: Integer): Boolean;
     function UnpackVariant(const Index: Integer): Variant;
     property AsBytes: TBytes read GetAsBytes write SetAsBytes;
+    property Obj: TTNTMsgPack read GetObj write SetObj;
   end;
 
 
@@ -483,6 +488,11 @@ begin
  Result := FObj.EncodeToBytes;
 end;
 
+function TTNTPackArray.GetObj: TTNTMsgPack;
+begin
+  Result := FObj;
+end;
+
 procedure TTNTPackArray.InternalPack(const AValue: string);
 begin
  FObj.AddArrayChild.AsString := AValue;
@@ -518,6 +528,13 @@ end;
 procedure TTNTPackArray.SetAsBytes(const Value: TBytes);
 begin
  FObj.DecodeFromBytes(Value);
+end;
+
+procedure TTNTPackArray.SetObj(AValue: TTNTMsgPack);
+begin
+  if Assigned(FObj) then
+    FreeAndNil(FObj);
+  FObj := AValue;
 end;
 
 function TTNTPackArray.UnpackArray(const Index: Integer): ITNTPackerArray;
