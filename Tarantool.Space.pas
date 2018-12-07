@@ -13,12 +13,8 @@ uses SysUtils
  , Tarantool.Index
  , Tarantool.InsertRequest
  , Tarantool.UpdateRequest
-// , Tarantool.DeleteRequest
  , Tarantool.UpsertRequest
  , Tarantool.Exceptions
-// , Tarantool.SimpleMsgPack
-// , Tarantool.Utils
-// , Tarantool.Core
  , Tarantool.Variants
  , Variants
  , Generics.Collections
@@ -98,7 +94,7 @@ type
 
     function SelectAll: ITNTTuple;
     function Insert(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple; overload;
-    function Insert(AValues: Variant): ITNTTuple; overload;
+    function Insert(AValues: Variant; ANeedAnswer: boolean = true): ITNTTuple; overload;
     function Insert(AValues: array of const; ANeedAnswer: boolean = true): ITNTTuple; overload;
 
     function Replace(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple; overload;
@@ -196,8 +192,7 @@ begin
         end;
       end;
       LSelect := SelectRequest(VIndexSpaceId, VIndexIdIndexId, FSpaceId);
-      Connection.WriteToTarantool(LSelect);
-      FIndexList := Connection.ReadFromTarantool(ITNTIndexList, Self) as ITNTIndexList;
+      FIndexList := Connection.DoTarantool(LSelect, ITNTIndexList, Self) as ITNTIndexList;
       if Flds.Count > 0 then
       begin
         for i := 0 to FIndexList.Count - 1 do
@@ -327,20 +322,22 @@ begin
  CheckSpaceOpened;
  v := ArrayOfConstToVariant(AValues);
  InsertCmd := NewInsert(FSpaceId, v);
- Connection.WriteToTarantool(InsertCmd);
  if ANeedAnswer then
-   Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple
+   Result := Connection.DoTarantool(insertCmd, ITNTTuple, Self) as ITNTTuple
  else
-   Connection.ReadFromTarantool(ITNTConnection, Self);
+   Connection.DoTarantool(insertCmd, ITNTConnection, Self);
 end;
 
-function TTNTSpace.Insert(AValues: Variant): ITNTTuple;
+function TTNTSpace.Insert(AValues: Variant; ANeedAnswer: boolean = true): ITNTTuple;
 var InsertCmd: ITNTInsert;
 begin
+  Result := nil;
   CheckSpaceOpened;
   InsertCmd := NewInsert(FSpaceId, AValues);
-  Connection.WriteToTarantool(InsertCmd);
-  Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple;
+ if ANeedAnswer then
+  Result := Connection.DoTarantool(InsertCmd, ITNTTuple, Self) as ITNTTuple
+ else
+   Connection.DoTarantool(InsertCmd, ITNTConnection, Self);
 end;
 
 function TTNTSpace.Replace(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple;
@@ -348,8 +345,7 @@ var ReplaceCmd: ITNTReplace;
 begin
   CheckSpaceOpened;
   ReplaceCmd := NewReplace(FSpaceId, AValues, ATuple);
-  Connection.WriteToTarantool(ReplaceCmd);
-  Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple;
+  Result := Connection.DoTarantool(ReplaceCmd, ITNTTuple, Self) as ITNTTuple;
 end;
 
 function TTNTSpace.Replace(AValues: Variant): ITNTTuple;
@@ -357,8 +353,7 @@ var ReplaceCmd: ITNTReplace;
 begin
   CheckSpaceOpened;
   ReplaceCmd := NewReplace(FSpaceId, AValues);
-  Connection.WriteToTarantool(ReplaceCmd);
-  Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple;
+  Result := Connection.DoTarantool(ReplaceCmd, ITNTTuple, Self) as ITNTTuple;
 end;
 
 function TTNTSpace.Replace(AValues: array of const): ITNTTuple;
@@ -374,8 +369,7 @@ var InsertCmd: ITNTInsert;
 begin
   CheckSpaceOpened;
   InsertCmd := NewInsert(FSpaceId, AValues, ATuple);
-  Connection.WriteToTarantool(InsertCmd);
-  Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple;
+  Result := Connection.DoTarantool(InsertCmd, ITNTTuple, Self) as ITNTTuple;
 end;
 
 function TTNTSpace.Select(AIndexId: Integer; AKeys: Variant; AIterator: TTarantoolIterator = TTarantoolIterator.Eq): ITNTTuple;
@@ -417,8 +411,7 @@ var SelectCmd: ITNTSelect;
 begin
   CheckSpaceOpened;
   SelectCmd := SelectRequest(FSpaceId, -1, null);
-  Connection.WriteToTarantool(SelectCmd);
-  Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple;
+  Result := Connection.DoTarantool(SelectCmd, ITNTTuple, Self) as ITNTTuple;
 end;
 
 procedure TTNTSpace.SetEngine(const Value: String);
@@ -481,8 +474,7 @@ var UpsertCmd: ITNTUpsert;
 begin
  CheckSpaceOpened;
  UpsertCmd := NewUpsert(FSpaceId, AValues, AUpdateDef);
- Connection.WriteToTarantool(UpsertCmd);
- Result := Connection.ReadFromTarantool(ITNTTuple, Self) as ITNTTuple;
+ Result := Connection.DoTarantool(UpsertCmd, ITNTTuple, Self) as ITNTTuple;
 end;
 
 function TTNTSpace.Upsert(AValues: array of const; AUpdateDef: ITNTUpdateDefinition): ITNTTuple;

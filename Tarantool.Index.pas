@@ -130,8 +130,9 @@ procedure TTNTIndex.Delete(AKeys: Variant);
 var DeleteCmd: ITNTDelete;
 begin
  DeleteCmd := NewDelete(FSpaceId, FIid, AKeys);
- Connection.WriteToTarantool(DeleteCmd);
- Connection.ReadFromTarantool(TGUID.Empty, nil);
+ Connection.DoTarantool(DeleteCmd, TGUID.Empty, nil);
+ //Connection.WriteToTarantool(DeleteCmd);
+ //Connection.ReadFromTarantool(TGUID.Empty, nil);
 end;
 
 destructor TTNTIndex.Destroy;
@@ -186,16 +187,18 @@ function TTNTIndex.Select(AKeys: Variant; ALimit, AOffset: Integer;
 var SelectCmd: ITNTSelect;
 begin
   SelectCmd := SelectRequest(FSpaceId, FIid, AKeys, AOffset, ALimit, AIterator);
-  Connection.WriteToTarantool(SelectCmd);
-  Result := Connection.ReadFromTarantool(ITNTTuple, Space) as ITNTTuple;
+  Result := Connection.DoTarantool(SelectCmd, ITNTTuple, Space) as ITNTTuple;
+  //Connection.WriteToTarantool(SelectCmd);
+  //Result := Connection.ReadFromTarantool(ITNTTuple, Space) as ITNTTuple;
 end;
 
 function TTNTIndex.SelectAll: ITNTTuple;
 var SelectCmd: ITNTSelect;
 begin
  SelectCmd := SelectRequest(FSpaceId, -1, null);
- Connection.WriteToTarantool(SelectCmd);
- Result := Connection.ReadFromTarantool(ITNTTuple, Space) as ITNTTuple;
+ Result := Connection.DoTarantool(SelectCmd, ITNTTuple, Space) as ITNTTuple;
+ //Connection.WriteToTarantool(SelectCmd);
+ //Result := Connection.ReadFromTarantool(ITNTTuple, Space) as ITNTTuple;
 end;
 
 procedure TTNTIndex.SetSpaceId(const Value: Int64);
@@ -208,8 +211,10 @@ function TTNTIndex.Update(AKeys: Variant;
 var UpdateCmd: ITNTUpdate;
 begin
   UpdateCmd := NewUpdate(FSpaceId, FIid, AKeys, AUpdateDef);
-  Connection.WriteToTarantool(UpdateCmd);
-  Result := Connection.ReadFromTarantool(ITNTTuple, Space) as ITNTTuple;
+  Result := Connection.DoTarantool(UpdateCmd, ITNTTuple, Space) as ITNTTuple;
+
+  //Connection.WriteToTarantool(UpdateCmd);
+  //Result := Connection.ReadFromTarantool(ITNTTuple, Space) as ITNTTuple;
 end;
 
 { TTNTIndexList }

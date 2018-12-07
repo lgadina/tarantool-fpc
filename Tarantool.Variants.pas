@@ -827,8 +827,8 @@ begin
      tkInt64: LValue := TValue.FromVariant(Value);
      tkChar: LValue := TValue.FromVariant(Value);
 
-     tkEnumeration: if LValue.TypeInfo = TypeInfo(boolean) then
-                     LValue := TValue.FromVariant(Value) else
+     tkEnumeration: if LValue.TypeInfo = TypeInfo(Boolean) then
+                     LValue := TValue.From<Boolean>(Value) else
                     TValue.Make(GetEnumValue(LValue.TypeInfo, Value), LValue.TypeInfo, LValue);
      tkFloat: if (LValue.TypeInfo = TypeInfo(TDate)) or
                  (LValue.TypeInfo = TypeInfo(TDateTime)) or
@@ -893,7 +893,13 @@ begin
         if TVarData(Value).VType=varInt64 then
           SetInt64Prop(Instance,PropInfo,TVarData(Value).VInt64) else
           SetOrdProp(Instance,PropInfo,Value);
-      tkEnumeration: if PropInfo^.PropType^.Name = 'Boolean' then
+      tkFloat: if (PropInfo^.PropType = TypeInfo(TDate)) or
+                  (PropInfo^.PropType = TypeInfo(TDateTime)) or
+                  (PropInfo^.PropType = TypeInfo(TTime)) then
+                 SetFloatProp(Instance, PropInfo, UnixToDateTime(Value))
+               else
+                SetFloatProp(Instance,PropInfo,Value);
+      tkEnumeration: if PropInfo^.PropType = TypeInfo(Boolean) then
                         SetOrdProp(Instance, PropInfo, Ord(StrToBoolDef(VarToStr(Value), false)))
                       else
                         SetEnumProp(Instance, PropInfo, Value);
@@ -918,8 +924,6 @@ begin
           SetUnicodeStrProp(Instance,PropInfo,'') else
           SetUnicodeStrProp(Instance,PropInfo,Value);
       {$endif NEXTGEN}
-      tkFloat:
-          SetFloatProp(Instance,PropInfo,Value);
       tkVariant:
         SetVariantProp(Instance,PropInfo,Value);
       tkDynArray: begin
@@ -990,15 +994,19 @@ end;
 
 procedure TTNTVariant.CastTo(var Dest: TVarData; const Source: TVarData;
   const AVarType: TVarType);
+var s: string;
 begin
   if Source.VType<>VarType then
     RaiseCastError;
 {$IF DEFINED(SUPEROBJECT) or DEFINED(JSONRTL)}
-  if AVarType = varUString then
-   Variant(Dest) := TTNTVariantData(Source)
+  if (AVarType = varUString) or (AVarType = varString) then
+  begin
+   s := TTNTVariantData(Source)
      .ToJson
      {$IFDEF SUPEROBJECT}.AsJSon(True);{$ENDIF}
      {$IFDEF JSONRTL}.ToJSON;{$ENDIF}
+   Variant(Dest) := s;
+  end;
 {$ENDIF}
 end;
 
@@ -1305,16 +1313,27 @@ begin
               TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, CustomSerializer.ToVariant(AObject, PI))
             else
             case typ of
+              tkFloat: begin
+                        if (PI^.PropType = TypeInfo(TDate)) or
+                           (PI^.PropType = TypeInfo(TDateTime)) or
+                           (PI^.PropType = TypeInfo(TTime))
+                        then
+                          TNTVariantDataSafe(Result)^.AddNameValue(PI^.Name, DateTimeToUnix(GetFloatProp(AObject, PI)))
+                        else
+                          TNTVariantDataSafe(Result)^.AddNameValue(PI^.Name, GetFloatProp(AObject, PI));
+                       end;
+
               tkInteger: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetOrdProp(AObject, PI));
               tkInt64: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetInt64Prop(AObject, PI));
               tkString: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetStrProp(AObject, PI));
               tkUString: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetUnicodeStrProp(AObject, PI));
               {$IfDef FPC}
+              tkQWord: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetInt64Prop(AObject, PI));
               tkAString: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetStrProp(AObject, PI));
               {$ENDIF}
               tkWString: TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetWideStrProp(AObject, PI));
               tkEnumeration: begin
-                if PI^.PropType^.Name = 'Boolean' then
+                if PI^.PropType = TypeInfo(Boolean) then
                   TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetOrdProp(AObject, PI) = 1)
                 else
                   TNTVariantDataSafe(Result)^.AddNameValue(pi^.Name, GetEnumProp(AObject, PI));

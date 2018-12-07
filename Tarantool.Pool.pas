@@ -4,7 +4,11 @@ interface
 uses Tarantool.Interfaces;
 
 
-function TNTConnectionPool(AMaxPoolSize: Integer; AHost: string; APort: Word; AUserName, APassword: string): ITNTConnectionPool; overload;
+function TNTConnectionPool(AMaxPoolSize: Integer; AHost: string; APort: Word;
+    AUserName, APassword: string; AConnectTimeout: Integer = 5000;
+    AReadTimeout: Integer = 5000): ITNTConnectionPool; overload;
+
+function TNTConnectionPool(AMaxPoolSize: Integer; AUrl: String): ITNTConnectionPool; overload;
 
 implementation
 
@@ -26,13 +30,13 @@ type
   TTarantoolConnectionList = TThreadedQueue<ITNTConnection>;
 {$EndIf}
 
+  { TTarantoolPool }
+
   TTarantoolPool = class(TInterfacedObject, ITNTConnectionPool)
   private
    FMaxPoolSize: Integer;
    FAllocatedConnection, FTakenConnection: Integer;
-   FUsername, FPassword: String;
-   FHost: String;
-   FPort: Word;
+   FUrl: String;
    FConnList: TTarantoolConnectionList;
    FLockPooled, FLockTaked: TCriticalSection;
    FBusy: TEvent;
@@ -40,7 +44,10 @@ type
     function CreateNewConnection: ITNTConnection;
     procedure ReserveConnection;
   public
-    constructor Create(AMaxPoolSize: Integer; AHost: String; APort: Word; AUsername, APassword: String);
+    constructor Create(AMaxPoolSize: Integer; AHost: String; APort: Word;
+         AUsername, APassword: String; AConnectTimeout: Integer = 5000;
+         AReadTimeout: Integer = 5000); overload;
+    constructor Create(AMaxPoolSize: Integer; AUrl: String); overload;
     destructor Destroy; override;
     function Get: ITNTConnection;
     procedure Put(AConnection: ITNTConnection);
@@ -49,28 +56,31 @@ type
 { TTarantoolPool }
 
 constructor TTarantoolPool.Create(AMaxPoolSize: Integer; AHost: String;
- APort: Word; AUsername, APassword: String);
+ APort: Word; AUsername, APassword: String; AConnectTimeout: Integer = 5000;
+ AReadTimeout: Integer = 5000);
+var Url: String;
 begin
- FMaxPoolSize := AMaxPoolSize;
- FUsername := AUsername;
- FHost := AHost;
- FPassword := APassword;
- FPort := APort;
- FAllocatedConnection := 0;
- FTakenConnection := 0;
- FConnList := TTarantoolConnectionList.Create{$IfNDef FPC}(AMaxPoolSize, INFINITE, 10){$EndIf};
- FLockTaked := TCriticalSection.Create;
- FLockPooled := TCriticalSection.Create;
- FBusy :=TEvent.Create(nil, True, True, '');
+ Url:=Format('tnt://%s:%s@%s:%d?ct=%d&=%d', [AUsername, APassword, AHost, APort,
+  AConnectTimeout, AReadTimeout]);
+ Create(AMaxPoolSize, Url);
+end;
+
+constructor TTarantoolPool.Create(AMaxPoolSize: Integer; AUrl: String);
+begin
+  FUrl:= AUrl;
+  FMaxPoolSize := AMaxPoolSize;
+  FAllocatedConnection := 0;
+  FTakenConnection := 0;
+  FConnList := TTarantoolConnectionList.Create{$IfNDef FPC}(AMaxPoolSize, INFINITE, 10){$EndIf};
+  FLockTaked := TCriticalSection.Create;
+  FLockPooled := TCriticalSection.Create;
+  FBusy :=TEvent.Create(nil, True, True, '');
 end;
 
 function TTarantoolPool.CreateNewConnection: ITNTConnection;
 begin
  Result := NewConnectionFromPool(Self);
- Result.HostName := FHost;
- Result.Port := FPort;
- Result.UserName := FUserName;
- Result.Password := FPassword;
+ Result.ConnectURL:= FUrl;
  Result.Open;
  Inc(FAllocatedConnection);
 end;
@@ -165,9 +175,16 @@ begin
 end;
 
 
-function TNTConnectionPool(AMaxPoolSize: Integer; AHost: string; APort: Word; AUserName, APassword: string): ITNTConnectionPool; overload;
+function TNTConnectionPool(AMaxPoolSize: Integer; AHost: string; APort: Word;
+  AUserName, APassword: string; AConnectTimeout: Integer = 5000; AReadTimeout: Integer = 5000): ITNTConnectionPool; overload;
 begin
- Result := TTarantoolPool.Create(AMaxPoolSize, AHost, APort, AUserName, APassword);
+ Result := TTarantoolPool.Create(AMaxPoolSize, AHost, APort, AUserName, APassword,
+ AConnectTimeout, AReadTimeout);
+end;
+
+function TNTConnectionPool(AMaxPoolSize: Integer; AUrl: String): ITNTConnectionPool; overload;
+begin
+ Result := TTarantoolPool.Create(AMaxPoolSize, AUrl);
 end;
 
 initialization

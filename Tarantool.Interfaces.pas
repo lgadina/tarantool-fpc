@@ -111,8 +111,12 @@ type
   end;
 
 
+  { ITNTConnection }
+
   ITNTConnection = interface
     ['{673B9391-0893-442E-9CD9-245F3220CF74}']
+    function GetConnectTimeout: integer;
+    function GetConnectUrl: String;
     function GetUserName: string;
     function GetHostName: string;
     function GetIsReady: boolean;
@@ -120,6 +124,8 @@ type
     function GetPort: integer;
     function GetUseSSL: Boolean;
     function GetVersion: String;
+    procedure SetConnectTimeout(AValue: integer);
+    procedure SetConnectUrl(AValue: String);
     procedure SetHostName(const Value: string);
     procedure SetPassword(const Value: string);
     procedure SetPort(const Value: integer);
@@ -130,12 +136,14 @@ type
     function GetReadTimeout: integer;
     procedure SetReadTimeout(const Value: integer);
 
-    function ReadFromTarantool(AResponseGuid: TGUID; ASpace: ITNTSpace): ITNTResponce;
-    procedure WriteToTarantool(ACommand: ITNTCommand);
+    //function ReadFromTarantool(AResponseGuid: TGUID; ASpace: ITNTSpace): ITNTResponce;
+    //procedure WriteToTarantool(ACommand: ITNTCommand);
+    function DoTarantool(ACommand: ITNTCommand; AResponceGuid: TGUID; ASpace: ITNTSpace): ITNTResponce;
 
     procedure Open;
     procedure Close;
     function FindSpaceByName(ASpaceName: string): ITNTSpace;
+    property ConnectURL: String read GetConnectUrl write SetConnectUrl;
     property HostName: string read GetHostName write SetHostName;
     property UserName: string read GetUserName write SetUserName;
     property Password: string read GetPassword write SetPassword;
@@ -144,9 +152,13 @@ type
     property IsReady: boolean read GetIsReady;
     property Version: String read GetVersion;
     property ReadTimeout: integer read GetReadTimeout write SetReadTimeout;
-    function Call(AFunctionName: string; AArguments: Variant): ITNTTuple; overload;
-    function Call(AFunctionName: string; AArguments: array of const): ITNTTuple; overload;
+    property ConnectTimeout: integer read GetConnectTimeout write SetConnectTimeout;
+    function Call(AFunctionName: string; AArguments: Variant; ANeedAnswer: Boolean = true): ITNTTuple; overload;
+    function Call(AFunctionName: string; AArguments: array of const; ANeedAnswer: Boolean = true): ITNTTuple; overload;
     function Eval(AExpression: string; AArguments: Variant): ITNTTuple;
+    function Insert(ASpaceId: Integer; AValues: array of const; ANeedAnswer: Boolean = true): ITNTTuple; overload;
+    function Insert(ASpaceId: Integer; AValues: Variant; ANeedAnswer: Boolean = true): ITNTTuple; overload;
+    function Ping: boolean;
     property Pool: ITNTConnectionPool read GetPool Write SetPool;
   end;
 
@@ -295,6 +307,21 @@ type
 
   TTNTTupleArray = array of ITNTTuple;
 
+  { ITNTPingSchema }
+
+  ITNTPing = interface(ITNTCommand)
+  ['{7C041D2E-6445-4DFE-B72B-328E836334CC}']
+    function GetschemaId: Int64;
+    procedure SetschemaId(AValue: Int64);
+    property schemaId: Int64 read GetschemaId write SetschemaId;
+  end;
+
+  ITNTPingResponce = interface(ITNTResponce)
+  ['{D1676129-5C5C-4EBA-9688-4CA02574DD59}']
+    function GetschemaId: Int64;
+    procedure SetschemaId(AValue: Int64);
+    property schemaId: Int64 read GetschemaId write SetschemaId;
+  end;
 
   ITNTSelect = interface(ITNTCommand)
     ['{7A97EB0F-BD14-4728-B1FE-0E549DCA28E0}']
@@ -365,7 +392,7 @@ type
     property FieldCount: Int64 read GetFieldCount;
 
     function Insert(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple; overload;
-    function Insert(AValues: Variant): ITNTTuple; overload;
+    function Insert(AValues: Variant; ANeedAnswer: boolean = true): ITNTTuple; overload;
     function Insert(AValues: array of const; ANeedAnswer: boolean = true): ITNTTuple; overload;
 
     function Replace(AValues: TTNTInsertValues; ATuple: TBytes): ITNTTuple; overload;

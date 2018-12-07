@@ -1229,7 +1229,7 @@ end;
 function TTNTMsgPack.GetAsBoolean: Boolean;
 begin
   if FDataType = mptBoolean then
-    Result := PBoolean(FValue)^ = {$IfDef FPC}1{$Else}True{$EndIf}
+    Result := PBoolean(FValue)^ = {$IfDef FPC}{$IfDef Linux}True{$Else}1{$EndIf}{$Else}True{$EndIf}
   else if FDataType = mptString then
     Result := StrToBoolDef(AsString, False)
   else if FDataType = mptInteger then
@@ -1597,7 +1597,7 @@ function TTNTMsgPack.GetKeyAsBoolean: Boolean;
 begin
   case FKeyType of
     mptInteger: Result := KeyAsInt64 <> 0;
-    mptBoolean: Result := PBoolean(FKeyName)^ = {$IfDef FPC}1{$Else}True{$EndIf};
+    mptBoolean: Result := PBoolean(FKeyName)^ = {$IfDef FPC}{$IfDef Linux}True{$Else}1{$EndIf}{$Else}True{$EndIf};
     mptString: TryStrToBool(KeyAsString, Result);
    else
     Result := False;
@@ -2260,7 +2260,7 @@ procedure TTNTMsgPack.SetAsBoolean(const Value: Boolean);
 begin
   FDataType := mptBoolean;
   SetLength(FValue, 1);
-  PBoolean(@FValue[0])^ := {$IfDef FPC}Byte(Value){$ELSE}Value{$ENDIF};
+  PBoolean(@FValue[0])^ := {$IfDef FPC}{$IfDef LINUX}Value{$Else}Byte(Value){$EndIf}{$ELSE}Value{$ENDIF};
 end;
 
 procedure TTNTMsgPack.SetAsBytes(const Value: TBytes);

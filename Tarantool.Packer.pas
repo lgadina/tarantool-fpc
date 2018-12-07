@@ -164,17 +164,22 @@ var Hdr, Bdy: TBytes;
     l: TBytes;
     outBuf: TBytes;
 begin
- if (FMsgPackObjects[1] <> nil) and (FMsgPackObjects[2] <> nil) then
+ Hdr := nil;
+ Bdy := nil;
+ if (FMsgPackObjects[1] <> nil)  then
  begin
+
   Hdr := FMsgPackObjects[1].EncodeToBytes;
   {$IFDEF  DUMP_MSG_PACK}
    DumpObjMsgPack(FMsgPackObjects[1], 0, '');
   {$ENDIF}
-
-  Bdy := FMsgPackObjects[2].EncodeToBytes;
-  {$IFDEF  DUMP_MSG_PACK}
-  DumpObjMsgPack(FMsgPackObjects[2], 0, '');
-  {$ENDIF}
+  if FMsgPackObjects[2] <> nil then
+  begin
+    Bdy := FMsgPackObjects[2].EncodeToBytes;
+   {$IFDEF  DUMP_MSG_PACK}
+    DumpObjMsgPack(FMsgPackObjects[2], 0, '');
+   {$ENDIF}
+  end;
 
   len := Length(Hdr)+Length(Bdy);
   SetLength(l, 5);
@@ -185,7 +190,8 @@ begin
   l[4] := len and $FF;
 
   outBuf := AddArray(Hdr, l);
-  outBuf := AddArray(Bdy, OutBuf);
+  if Length(Bdy) > 0 then
+   outBuf := AddArray(Bdy, OutBuf);
   SetLength(Result, length(outBuf));
   Move(outBuf[0], Result[0], Length(outBuf));
  end else
